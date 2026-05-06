@@ -147,17 +147,12 @@ async function refreshStyleNamesIfChanged() {
 }
 
 // Debounce function to prevent spamming the autocomplete function
-var dbTimeOut;
 const debounce = (func, wait = 300) => {
+    let timeout;
     return function (...args) {
-        if (dbTimeOut) {
-            clearTimeout(dbTimeOut);
-        }
-
-        dbTimeOut = setTimeout(() => {
-            func.apply(this, args);
-        }, wait);
-    }
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
 }
 
 // Difference function to fix duplicates not being seen as changes in normal filter
@@ -320,9 +315,12 @@ function escapeRegExp(string, wildcardMatching = false) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
 function escapeHTML(unsafeText) {
-    let div = document.createElement('div');
-    div.textContent = unsafeText;
-    return div.innerHTML;
+    return unsafeText
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 // For black/whitelisting

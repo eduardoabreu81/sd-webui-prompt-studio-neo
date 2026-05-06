@@ -156,6 +156,25 @@ const autocompleteCSS = `
     }
 `;
 
+let tagIndex = new Map();
+
+function buildTagIndex() {
+    tagIndex.clear();
+    allTags.forEach(tag => {
+        const name = tag[0].trim();
+        const lower = name.toLowerCase();
+        tag._lower = lower;
+        tag._aliasLower = tag[3] ? tag[3].toLowerCase() : null;
+
+        // Index by first 3 characters for fast lookup
+        const key = lower.substring(0, 3);
+        if (!tagIndex.has(key)) {
+            tagIndex.set(key, []);
+        }
+        tagIndex.get(key).push(tag);
+    });
+}
+
 async function loadTags(c) {
     // Load main tags and aliases
     if (allTags.length === 0 && c.tagFile && c.tagFile !== "None") {
@@ -293,6 +312,7 @@ async function syncOptions() {
     if (!TAC_CFG || newCFG.tagFile !== TAC_CFG.tagFile || newCFG.extra.extraFile !== TAC_CFG.extra.extraFile) {
         allTags = [];
         await loadTags(newCFG);
+        buildTagIndex();
     }
 
     // Refresh temp files if model sort order changed
@@ -427,7 +447,15 @@ const COMPLETED_WILDCARD_REGEX = /__[^\s,_][^\t\n\r,_]*[^\s,_]__[^\s,_]*/g;
 const STYLE_VAR_REGEX = /\$\(?[^$|\[\],\s]*\)?/g;
 const NORMAL_TAG_REGEX = /[^\s,|<>\[\]:]+_\([^\s,|<>\[\]:]*\)?|[^\s,|<>():\[\]]+|</g;
 const RUBY_TAG_REGEX = /[\w\d<][\w\d' \-?!/$%]{2,}>?/g;
-const TAG_REGEX = () => { return new RegExp(`${POINTY_REGEX.source}|${COMPLETED_WILDCARD_REGEX.source.replaceAll("__", escapeRegExp(TAC_CFG.wcWrap))}|${STYLE_VAR_REGEX.source}|${NORMAL_TAG_REGEX.source}`, "g"); }
+let cachedTagRegex = null;
+let cachedWcWrap = null;
+function getTagRegex() {
+    if (cachedTagRegex === null || TAC_CFG.wcWrap !== cachedWcWrap) {
+        cachedWcWrap = TAC_CFG.wcWrap;
+        cachedTagRegex = new RegExp(`${POINTY_REGEX.source}|${COMPLETED_WILDCARD_REGEX.source.replaceAll("__", escapeRegExp(TAC_CFG.wcWrap))}|${STYLE_VAR_REGEX.source}|${NORMAL_TAG_REGEX.source}`, "g");
+    }
+    return cachedTagRegex;
+}
 
 // On click, insert the tag into the prompt textbox with respect to the cursor position
 async function insertTextAtCursor(textArea, result, tagword, tabCompletedWithoutChoice = false) {
@@ -653,26 +681,11 @@ async function insertTextAtCursor(textArea, result, tagword, tabCompletedWithout
     let weightedTags = [...prompt.matchAll(WEIGHT_REGEX)]
         .map(match => match[1])
         .sort((a, b) => a.length - b.length);
-    let tags = [...prompt.match(TAG_REGEX())].sort((a, b) => a.length - b.length);
+    let tags = [...prompt.match(getTagRegex())].sort((a, b) => a.length - b.length);
     
     if (weightedTags !== null && tags !== null) {
-        // Create a working copy of the normal tags
-        let workingTags = [...tags];
-        
-        // For each weighted tag
-        for (const weightedTag of weightedTags) {
-            // Find first matching tag and remove it from working set
-            const matchIndex = workingTags.findIndex(tag => 
-                tag === weightedTag && !tag.startsWith("<[") && !tag.startsWith("$(")
-            );
-            
-            if (matchIndex !== -1) {
-                // Remove the matched tag from the working set
-                workingTags.splice(matchIndex, 1);
-            }
-        }
-        
-        // Combine filtered normal tags with weighted tags
+        const weightedSet = new Set(weightedTags);
+        let workingTags = tags.filter(tag => !weightedSet.has(tag) || tag.startsWith("<[") || tag.startsWith("$("));
         tags = workingTags.concat(weightedTags);
     }
     previousTags = tags;
@@ -759,12 +772,18 @@ function addResultsToList(textArea, results, tagword, resetList) {
 
             // search in translations if no alias matches
             if (!bestAlias) {
-                let tagOrAlias = pair => pair[0] === result.text || splitAliases.includes(pair[0]);
-                var tArray = [...translations];
-                if (tArray) {
-                    var translationKey = [...translations].find(pair => tagOrAlias(pair) && pair[1].includes(tagword));
-                    if (translationKey)
-                        bestAlias = translationKey[0];
+                for (const alias of splitAliases) {
+                    const tr = translations.get(alias);
+                    if (tr && tr.toLowerCase().includes(tagword)) {
+                        bestAlias = alias;
+                        break;
+                    }
+                }
+                if (!bestAlias) {
+                    const tr = translations.get(result.text);
+                    if (tr && tr.toLowerCase().includes(tagword)) {
+                        bestAlias = result.text;
+                    }
                 }
             }
 
@@ -952,7 +971,7 @@ function addResultsToList(textArea, results, tagword, resetList) {
                 // Reset delay timer if we leave the item
                 me.addEventListener("mouseout", () => {
                     clearTimeout(hoverTimeout);
-                });
+                }, { once: true });
             });
         }
 
@@ -1170,26 +1189,11 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
         let weightedTags = [...prompt.matchAll(WEIGHT_REGEX)]
             .map(match => match[1])
             .sort((a, b) => a.length - b.length);
-        let tags = [...prompt.match(TAG_REGEX())].sort((a, b) => a.length - b.length);
+        let tags = [...prompt.match(getTagRegex())].sort((a, b) => a.length - b.length);
         
         if (weightedTags !== null && tags !== null) {
-            // Create a working copy of the normal tags
-            let workingTags = [...tags];
-            
-            // For each weighted tag
-            for (const weightedTag of weightedTags) {
-                // Find first matching tag and remove it from working set
-                const matchIndex = workingTags.findIndex(tag => 
-                    tag === weightedTag && !tag.startsWith("<[") && !tag.startsWith("$(")
-                );
-                
-                if (matchIndex !== -1) {
-                    // Remove the matched tag from the working set
-                    workingTags.splice(matchIndex, 1);
-                }
-            }
-            
-            // Combine filtered normal tags with weighted tags
+            const weightedSet = new Set(weightedTags);
+            let workingTags = tags.filter(tag => !weightedSet.has(tag) || tag.startsWith("<[") || tag.startsWith("$("));
             tags = workingTags.concat(weightedTags);
         }
 
@@ -1256,10 +1260,17 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
         }
 
         // Both normal tags and aliases/translations are included depending on the config
-        let baseFilter = (x) => x[0].toLowerCase().search(searchRegex) > -1;
-        let aliasFilter = (x) => x[3] && x[3].toLowerCase().search(searchRegex) > -1;
-        let translationFilter = (x) => (translations.has(x[0]) && translations.get(x[0]).toLowerCase().search(searchRegex) > -1)
-            || x[3] && x[3].split(",").some(y => translations.has(y) && translations.get(y).toLowerCase().search(searchRegex) > -1);
+        // Use cached _lower / _aliasLower when available (set by buildTagIndex)
+        let baseFilter = (x) => (x._lower || x[0].toLowerCase()).search(searchRegex) > -1;
+        let aliasFilter = (x) => {
+            const al = x._aliasLower || (x[3] ? x[3].toLowerCase() : null);
+            return al && al.search(searchRegex) > -1;
+        };
+        let translationFilter = (x) => {
+            const al = x._aliasLower || (x[3] ? x[3].toLowerCase() : null);
+            return (translations.has(x[0]) && translations.get(x[0]).toLowerCase().search(searchRegex) > -1)
+                || (al && al.split(",").some(y => translations.has(y) && translations.get(y).toLowerCase().search(searchRegex) > -1));
+        };
 
         let fil;
         if (TAC_CFG.alias.searchByAlias && TAC_CFG.translation.searchByTranslation)
@@ -1271,8 +1282,14 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
         else
             fil = (x) => baseFilter(x);
 
-        // Add final results
-        allTags.filter(fil).forEach(t => {
+        // Use indexed subset for 3+ characters, fallback to full scan otherwise
+        let tagsToSearch = allTags;
+        if (tagword.length >= 3 && tagIndex.size > 0) {
+            const key = tagword.substring(0, 3);
+            tagsToSearch = tagIndex.get(key) || [];
+        }
+
+        tagsToSearch.filter(fil).forEach(t => {
             let result = new AutocompleteResult(t[0].trim(), ResultType.tag)
             result.category = t[1];
             result.count = t[2];
@@ -1526,9 +1543,13 @@ function addAutocompleteToArea(area) {
         // Hide by default so it doesn't show up on page load
         hideResults(area);
 
+        // Debounced handlers per textarea to avoid shared timeout interference
+        const debouncedAutocomplete = debounce(() => autocomplete(area, area.value), Math.min(TAC_CFG.delayTime, 50));
+        const debouncedUpdateRuby = debounce(() => updateRuby(area, area.value), 300);
+
         // Add autocomplete event listener
         area.addEventListener('input', (e) => {
-            updateRuby(area, area.value);
+            debouncedUpdateRuby();
 
             // Cancel autocomplete itself if the event has no inputType (e.g. because it was triggered by the updateInput() function)
             if (!e.inputType && !tacSelfTrigger) return;
@@ -1540,7 +1561,7 @@ function addAutocompleteToArea(area) {
                 setTimeout(() => { hideBlocked = false; }, 100);
             }
 
-            debounce(autocomplete(area, area.value), TAC_CFG.delayTime);
+            debouncedAutocomplete();
             checkKeywordInsertionUndo(area, e);
         });
         // Add focusout event listener
