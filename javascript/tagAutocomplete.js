@@ -843,7 +843,9 @@ function addResultsToList(textArea, results, tagword, resetList) {
             displayText += `[${translations.get(result.text)}]`;
 
         // Print search term bolded in result
-        itemText.innerHTML = displayText.replace(tagword, `<b>${tagword}</b>`);
+        // Escape tagword so it matches displayText (which was already escaped by escapeHTML)
+        const escapedTagword = escapeHTML(tagword);
+        itemText.innerHTML = displayText.replace(escapedTagword, `<b>${escapedTagword}</b>`);
 
         const splitTypes = [ResultType.wildcardFile, ResultType.yamlWildcard]
         if (splitTypes.includes(result.type) && itemText.innerHTML.includes("/")) {
