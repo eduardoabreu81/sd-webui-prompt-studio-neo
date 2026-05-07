@@ -955,7 +955,8 @@ function addResultsToList(textArea, results, tagword, resetList) {
 
         // Add small ✨ marker to indicate usage sorting
         if (result.usageBias) {
-            flexDiv.querySelector(".acMetaText").classList.add("biased");
+            const metaNode = flexDiv.querySelector(".acMetaText");
+            if (metaNode) metaNode.classList.add("biased");
             flexDiv.title = "✨ Frequent tag. Ctrl/Cmd + click to reset usage count.";
         }
 
@@ -964,10 +965,12 @@ function addResultsToList(textArea, results, tagword, resetList) {
             // Fix PR#313#issuecomment-2592551794
             if (!(result.text === tagword && tagCount[result.text] === 1)) {
                 const textNode = flexDiv.querySelector(".acMetaText");
-                const span = document.createElement("span");
-                textNode.insertBefore(span, textNode.firstChild);
-                span.classList.add("used");
-                span.title = "🔁 The prompt already contains this tag";
+                if (textNode) {
+                    const span = document.createElement("span");
+                    textNode.insertBefore(span, textNode.firstChild);
+                    span.classList.add("used");
+                    span.title = "🔁 The prompt already contains this tag";
+                }
             }
         }
 
