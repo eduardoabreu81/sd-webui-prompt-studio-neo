@@ -1808,88 +1808,72 @@ async function setup() {
 
     // Preload tags immediately so first autocomplete feels instant
     if (!tagsLoaded) {
-        createTacStatusButton();
+        createTacStatusBadge();
         ensureTagsLoaded().then(() => {
-            updateTacStatusButton('ready');
+            updateTacStatusBadge('ready');
         }).catch(() => {
-            updateTacStatusButton('error');
+            updateTacStatusBadge('error');
         });
     } else {
-        createTacStatusButton();
-        updateTacStatusButton('ready');
+        createTacStatusBadge();
+        updateTacStatusBadge('ready');
     }
     console.timeEnd('[TAC] setup total');
 }
 
 // ------------------------------------------------------------------
-// Status indicator button injected into the toolbar below Generate
+// Status badge on the Generate button (bottom-right corner)
 // ------------------------------------------------------------------
-let tacStatusBtn = null;
+let tacStatusBadge = null;
 
-function createTacStatusButton() {
-    // Target the txt2img and img2img toolbars (#txt2img_tools, #img2img_tools)
-    const toolbars = [
-        gradioApp().querySelector('#txt2img_tools'),
-        gradioApp().querySelector('#img2img_tools')
-    ];
+function createTacStatusBadge() {
+    const generateBtn = gradioApp().querySelector('#txt2img_generate, #img2img_generate');
+    if (!generateBtn || generateBtn.querySelector('.tac-status-badge')) return;
 
-    toolbars.forEach(toolbar => {
-        if (!toolbar || toolbar.querySelector('.tac-status-btn')) return;
+    // Ensure the button can hold absolute children
+    if (getComputedStyle(generateBtn).position === 'static') {
+        generateBtn.style.position = 'relative';
+    }
 
-        const btn = document.createElement('button');
-        btn.className = 'tac-status-btn svelte-cmf5ev'; // try to match Gradio button styling
-        btn.type = 'button';
-        btn.title = 'TagComplete: Loading tags...';
-        btn.style.cssText = `
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            padding: 0;
-            background: transparent;
-            border: none;
-            border-radius: 8px;
-            cursor: default;
-            outline: none;
-        `;
-        btn.innerHTML = `<span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;box-shadow:0 0 5px rgba(245,158,11,0.7);transition:background 0.3s,box-shadow 0.3s;"></span>`;
-        toolbar.appendChild(btn);
-
-        // Keep reference to txt2img toolbar only for updates
-        if (!tacStatusBtn && toolbar.id === 'txt2img_tools') {
-            tacStatusBtn = btn;
-        }
-    });
+    const badge = document.createElement('span');
+    badge.className = 'tac-status-badge';
+    badge.title = 'TagComplete: Loading tags...';
+    badge.style.cssText = `
+        position: absolute;
+        bottom: 6px;
+        right: 6px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #f59e0b;
+        box-shadow: 0 0 5px rgba(245,158,11,0.8);
+        border: 2px solid rgba(255,255,255,0.2);
+        transition: background 0.3s, box-shadow 0.3s;
+        pointer-events: none;
+        z-index: 10;
+    `;
+    generateBtn.appendChild(badge);
+    tacStatusBadge = badge;
 }
 
-function updateTacStatusButton(state) {
-    const toolbars = [
-        gradioApp().querySelector('#txt2img_tools'),
-        gradioApp().querySelector('#img2img_tools')
-    ];
-    toolbars.forEach(toolbar => {
-        if (!toolbar) return;
-        const btn = toolbar.querySelector('.tac-status-btn');
-        if (!btn) return;
-        const dot = btn.querySelector('span');
-        switch (state) {
-            case 'ready':
-                dot.style.background = '#22c55e';
-                dot.style.boxShadow = '0 0 5px rgba(34, 197, 94, 0.7)';
-                btn.title = 'TagComplete: Ready';
-                break;
-            case 'error':
-                dot.style.background = '#ef4444';
-                dot.style.boxShadow = '0 0 5px rgba(239, 68, 68, 0.7)';
-                btn.title = 'TagComplete: Error loading tags';
-                break;
-            default:
-                dot.style.background = '#f59e0b';
-                dot.style.boxShadow = '0 0 5px rgba(245, 158, 11, 0.7)';
-                btn.title = 'TagComplete: Loading tags...';
-        }
-    });
+function updateTacStatusBadge(state) {
+    if (!tacStatusBadge) return;
+    switch (state) {
+        case 'ready':
+            tacStatusBadge.style.background = '#22c55e';
+            tacStatusBadge.style.boxShadow = '0 0 5px rgba(34, 197, 94, 0.8)';
+            tacStatusBadge.title = 'TagComplete: Ready';
+            break;
+        case 'error':
+            tacStatusBadge.style.background = '#ef4444';
+            tacStatusBadge.style.boxShadow = '0 0 5px rgba(239, 68, 68, 0.8)';
+            tacStatusBadge.title = 'TagComplete: Error loading tags';
+            break;
+        default:
+            tacStatusBadge.style.background = '#f59e0b';
+            tacStatusBadge.style.boxShadow = '0 0 5px rgba(245, 158, 11, 0.8)';
+            tacStatusBadge.title = 'TagComplete: Loading tags...';
+    }
 }
 var tacLoading = false;
 onUiUpdate(async () => {
