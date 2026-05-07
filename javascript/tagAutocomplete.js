@@ -420,6 +420,15 @@ function showResults(textArea) {
     let previewDiv = gradioApp().querySelector(`.autocompleteParent${textAreaId} .sideInfo`);
     previewDiv.style.display = "none";
 }
+function showLoadingResults(textArea) {
+    let textAreaId = getTextAreaIdentifier(textArea);
+    let resultsDiv = gradioApp().querySelector('.autocompleteResults' + textAreaId);
+    let resultsList = resultsDiv?.querySelector('ul');
+    if (!resultsList) return;
+    resultsList.innerHTML = '<li style="padding:8px 12px;color:#9ca3af;font-style:italic;">Loading tags...</li>';
+    showResults(textArea);
+}
+
 function hideResults(textArea) {
     let textAreaId = getTextAreaIdentifier(textArea);
     let resultsDiv = gradioApp().querySelector('.autocompleteParent' + textAreaId);
@@ -1197,8 +1206,14 @@ async function ensureTagsLoaded() {
 }
 
 async function autocomplete(textArea, prompt, fixedTag = null) {
-    // Lazy-load tags on first interaction so startup doesn't block the main thread
-    await ensureTagsLoaded();
+    // Lazy-load tags on first interaction so startup doesn't block the main thread.
+    // If not loaded yet, show a brief loading indicator and retry automatically.
+    if (!tagsLoaded) {
+        showLoadingResults(textArea);
+        await ensureTagsLoaded();
+        // Re-run now that tags are ready
+        return autocomplete(textArea, prompt, fixedTag);
+    }
 
     // Return if the function is deactivated in the UI
     if (!isEnabled()) return;
@@ -1576,7 +1591,7 @@ function addAutocompleteToArea(area) {
         const debouncedUpdateRuby = debounce(() => updateRuby(area, area.value), 300);
 
         // Add autocomplete event listener
-        area.addEventListener('input', (e) => {
+        area.addEventListener('input', async (e) => {
             debouncedUpdateRuby();
 
             // Cancel autocomplete itself if the event has no inputType (e.g. because it was triggered by the updateInput() function)
@@ -1589,7 +1604,7 @@ function addAutocompleteToArea(area) {
                 setTimeout(() => { hideBlocked = false; }, 100);
             }
 
-            debouncedAutocomplete();
+            await debouncedAutocomplete();
             checkKeywordInsertionUndo(area, e);
         });
         // Add focusout event listener

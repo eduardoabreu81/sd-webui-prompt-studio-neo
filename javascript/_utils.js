@@ -151,7 +151,9 @@ const debounce = (func, wait = 300) => {
     let timeout;
     return function (...args) {
         if (timeout) clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
+        return new Promise((resolve) => {
+            timeout = setTimeout(() => resolve(func.apply(this, args)), wait);
+        });
     };
 }
 
