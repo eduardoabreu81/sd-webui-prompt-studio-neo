@@ -1807,16 +1807,7 @@ async function setup() {
     await processQueue(QUEUE_AFTER_SETUP, null);
 
     // Preload tags immediately so first autocomplete feels instant
-    if (!tagsLoaded) {
-        createStatusIndicator();
-        ensureTagsLoaded().then(() => {
-            updateStatusIndicator('ready');
-        }).catch(() => {
-            updateStatusIndicator('error');
-        });
-    } else {
-        updateStatusIndicator('ready');
-    }
+    if (!tagsLoaded) ensureTagsLoaded();
     console.timeEnd('[TAC] setup total');
 }
 

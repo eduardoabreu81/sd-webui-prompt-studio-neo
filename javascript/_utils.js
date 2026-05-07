@@ -412,7 +412,12 @@ async function processQueue(queue, context, ...args) {
 
 // Parallel version for independent loads (e.g. QUEUE_FILE_LOAD)
 async function processQueueParallel(queue, context, ...args) {
-    await Promise.all(queue.map(fn => fn.call(context, ...args)));
+    await Promise.all(queue.map(fn =>
+        fn.call(context, ...args).catch(err => {
+            console.error('[TAC] Queue function error:', err);
+            // Swallow so one failure doesn't break the others
+        })
+    ));
 }
 // The same but with return values
 async function processQueueReturn(queue, context, ...args)
