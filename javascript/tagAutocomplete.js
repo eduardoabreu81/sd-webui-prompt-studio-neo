@@ -1807,57 +1807,78 @@ async function setup() {
     await processQueue(QUEUE_AFTER_SETUP, null);
 
     // Preload tags immediately so first autocomplete feels instant
-    if (!tagsLoaded) ensureTagsLoaded();
+    if (!tagsLoaded) {
+        createTacStatusPill();
+        ensureTagsLoaded().then(() => {
+            updateTacStatusPill('ready');
+        }).catch(() => {
+            updateTacStatusPill('error');
+        });
+    } else {
+        createTacStatusPill();
+        updateTacStatusPill('ready');
+    }
     console.timeEnd('[TAC] setup total');
 }
 
 // ------------------------------------------------------------------
-// Status indicator dot below the Generate button
+// Floating status pill (bottom-left to avoid clashing with diagnostics)
 // ------------------------------------------------------------------
-let tacStatusDot = null;
+let tacStatusPill = null;
 
-function createStatusIndicator() {
-    // Try multiple selectors for the Generate button (Forge Neo / Gradio 4)
-    const generateBtn = gradioApp().querySelector('#txt2img_generate, #img2img_generate, button.primary[title="Generate"], button:has-text("Generate")');
-    if (!generateBtn) return;
-
-    // Create dot element
-    tacStatusDot = document.createElement('span');
-    tacStatusDot.id = 'tac-status-dot';
-    tacStatusDot.title = 'TagComplete: Loading tags...';
-    tacStatusDot.style.cssText = `
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #f59e0b;
-        margin-left: 6px;
-        vertical-align: middle;
-        box-shadow: 0 0 4px rgba(245, 158, 11, 0.6);
-        transition: background 0.3s, box-shadow 0.3s;
+function createTacStatusPill() {
+    if (tacStatusPill) return;
+    tacStatusPill = document.createElement('div');
+    tacStatusPill.id = 'tac-status-pill';
+    tacStatusPill.style.cssText = `
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: rgba(17, 24, 39, 0.9);
+        border: 1px solid rgba(75, 85, 99, 0.5);
+        border-radius: 999px;
+        color: #e5e7eb;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 11px;
+        font-weight: 600;
+        pointer-events: none;
+        opacity: 1;
+        transition: opacity 0.5s;
     `;
-
-    // Inject after the button text or icon
-    generateBtn.appendChild(tacStatusDot);
+    tacStatusPill.innerHTML = `
+        <span id="tac-status-dot" style="width:8px;height:8px;border-radius:50%;background:#f59e0b;box-shadow:0 0 4px rgba(245,158,11,0.6);transition:background 0.3s,box-shadow 0.3s;"></span>
+        <span id="tac-status-label">TAC</span>
+    `;
+    document.body.appendChild(tacStatusPill);
 }
 
-function updateStatusIndicator(state) {
-    if (!tacStatusDot) return;
+function updateTacStatusPill(state) {
+    if (!tacStatusPill) return;
+    const dot = tacStatusPill.querySelector('#tac-status-dot');
     switch (state) {
         case 'ready':
-            tacStatusDot.style.background = '#22c55e';
-            tacStatusDot.style.boxShadow = '0 0 4px rgba(34, 197, 94, 0.6)';
-            tacStatusDot.title = 'TagComplete: Ready';
+            dot.style.background = '#22c55e';
+            dot.style.boxShadow = '0 0 4px rgba(34, 197, 94, 0.6)';
+            tacStatusPill.title = 'TagComplete: Ready';
+            // Fade out after 3s when ready
+            setTimeout(() => {
+                if (tacStatusPill) tacStatusPill.style.opacity = '0';
+            }, 3000);
             break;
         case 'error':
-            tacStatusDot.style.background = '#ef4444';
-            tacStatusDot.style.boxShadow = '0 0 4px rgba(239, 68, 68, 0.6)';
-            tacStatusDot.title = 'TagComplete: Error loading tags';
+            dot.style.background = '#ef4444';
+            dot.style.boxShadow = '0 0 4px rgba(239, 68, 68, 0.6)';
+            tacStatusPill.title = 'TagComplete: Error loading tags';
             break;
         default:
-            tacStatusDot.style.background = '#f59e0b';
-            tacStatusDot.style.boxShadow = '0 0 4px rgba(245, 158, 11, 0.6)';
-            tacStatusDot.title = 'TagComplete: Loading...';
+            dot.style.background = '#f59e0b';
+            dot.style.boxShadow = '0 0 4px rgba(245, 158, 11, 0.6)';
+            tacStatusPill.title = 'TagComplete: Loading tags...';
     }
 }
 var tacLoading = false;
