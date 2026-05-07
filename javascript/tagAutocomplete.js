@@ -1808,71 +1808,72 @@ async function setup() {
 
     // Preload tags immediately so first autocomplete feels instant
     if (!tagsLoaded) {
-        createTacStatusBadge();
+        createTacStatusDot();
         ensureTagsLoaded().then(() => {
-            updateTacStatusBadge('ready');
+            updateTacStatusDot('ready');
         }).catch(() => {
-            updateTacStatusBadge('error');
+            updateTacStatusDot('error');
         });
     } else {
-        createTacStatusBadge();
-        updateTacStatusBadge('ready');
+        createTacStatusDot();
+        updateTacStatusDot('ready');
     }
     console.timeEnd('[TAC] setup total');
 }
 
 // ------------------------------------------------------------------
-// Status badge on the Generate button (bottom-right corner)
+// Status dot inside the toolbar below Generate (right side, absolute)
 // ------------------------------------------------------------------
-let tacStatusBadge = null;
+let tacStatusDot = null;
 
-function createTacStatusBadge() {
-    const generateBtn = gradioApp().querySelector('#txt2img_generate, #img2img_generate');
-    if (!generateBtn || generateBtn.querySelector('.tac-status-badge')) return;
+function createTacStatusDot() {
+    const toolbar = gradioApp().querySelector('#txt2img_tools');
+    if (!toolbar || toolbar.querySelector('.tac-status-dot')) return;
 
-    // Ensure the button can hold absolute children
-    if (getComputedStyle(generateBtn).position === 'static') {
-        generateBtn.style.position = 'relative';
+    // Ensure toolbar is a positioning context
+    if (getComputedStyle(toolbar).position === 'static') {
+        toolbar.style.position = 'relative';
     }
 
-    const badge = document.createElement('span');
-    badge.className = 'tac-status-badge';
-    badge.title = 'TagComplete: Loading tags...';
-    badge.style.cssText = `
+    const dot = document.createElement('span');
+    dot.className = 'tac-status-dot';
+    dot.title = 'TagComplete: Loading tags...';
+    dot.style.cssText = `
         position: absolute;
-        bottom: 6px;
-        right: 6px;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
         width: 10px;
         height: 10px;
         border-radius: 50%;
         background: #f59e0b;
         box-shadow: 0 0 5px rgba(245,158,11,0.8);
-        border: 2px solid rgba(255,255,255,0.2);
+        border: 2px solid rgba(255,255,255,0.15);
         transition: background 0.3s, box-shadow 0.3s;
         pointer-events: none;
         z-index: 10;
     `;
-    generateBtn.appendChild(badge);
-    tacStatusBadge = badge;
+    toolbar.appendChild(dot);
+    tacStatusDot = dot;
 }
 
-function updateTacStatusBadge(state) {
-    if (!tacStatusBadge) return;
+function updateTacStatusDot(state) {
+    if (!tacStatusDot) return;
     switch (state) {
         case 'ready':
-            tacStatusBadge.style.background = '#22c55e';
-            tacStatusBadge.style.boxShadow = '0 0 5px rgba(34, 197, 94, 0.8)';
-            tacStatusBadge.title = 'TagComplete: Ready';
+            tacStatusDot.style.background = '#22c55e';
+            tacStatusDot.style.boxShadow = '0 0 5px rgba(34, 197, 94, 0.8)';
+            tacStatusDot.title = 'TagComplete: Ready';
             break;
         case 'error':
-            tacStatusBadge.style.background = '#ef4444';
-            tacStatusBadge.style.boxShadow = '0 0 5px rgba(239, 68, 68, 0.8)';
-            tacStatusBadge.title = 'TagComplete: Error loading tags';
+            tacStatusDot.style.background = '#ef4444';
+            tacStatusDot.style.boxShadow = '0 0 5px rgba(239, 68, 68, 0.8)';
+            tacStatusDot.title = 'TagComplete: Error loading tags';
             break;
         default:
-            tacStatusBadge.style.background = '#f59e0b';
-            tacStatusBadge.style.boxShadow = '0 0 5px rgba(245, 158, 11, 0.8)';
-            tacStatusBadge.title = 'TagComplete: Loading tags...';
+            tacStatusDot.style.background = '#f59e0b';
+            tacStatusDot.style.boxShadow = '0 0 5px rgba(245, 158, 11, 0.8)';
+            tacStatusDot.title = 'TagComplete: Loading tags...';
     }
 }
 var tacLoading = false;
