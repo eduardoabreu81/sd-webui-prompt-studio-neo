@@ -158,21 +158,31 @@ const autocompleteCSS = `
 
 let tagIndex = new Map();
 
-function buildTagIndex() {
+async function buildTagIndex() {
     tagIndex.clear();
-    allTags.forEach(tag => {
-        const name = tag[0].trim();
-        const lower = name.toLowerCase();
-        tag._lower = lower;
-        tag._aliasLower = tag[3] ? tag[3].toLowerCase() : null;
+    const CHUNK_SIZE = 5000;
+    const total = allTags.length;
 
-        // Index by first 3 characters for fast lookup
-        const key = lower.substring(0, 3);
-        if (!tagIndex.has(key)) {
-            tagIndex.set(key, []);
+    for (let i = 0; i < total; i += CHUNK_SIZE) {
+        const end = Math.min(i + CHUNK_SIZE, total);
+        for (let j = i; j < end; j++) {
+            const tag = allTags[j];
+            const name = tag[0].trim();
+            const lower = name.toLowerCase();
+            tag._lower = lower;
+            tag._aliasLower = tag[3] ? tag[3].toLowerCase() : null;
+
+            const key = lower.substring(0, 3);
+            if (!tagIndex.has(key)) {
+                tagIndex.set(key, []);
+            }
+            tagIndex.get(key).push(tag);
         }
-        tagIndex.get(key).push(tag);
-    });
+        // Yield to the browser so input events don't starve
+        if (end < total) {
+            await new Promise(r => setTimeout(r, 0));
+        }
+    }
 }
 
 async function loadTags(c) {
@@ -312,7 +322,7 @@ async function syncOptions() {
     if (!TAC_CFG || newCFG.tagFile !== TAC_CFG.tagFile || newCFG.extra.extraFile !== TAC_CFG.extra.extraFile) {
         allTags = [];
         await loadTags(newCFG);
-        buildTagIndex();
+        await buildTagIndex();
     }
 
     // Refresh temp files if model sort order changed
