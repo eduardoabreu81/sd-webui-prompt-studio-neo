@@ -1865,10 +1865,6 @@ function updateTacStatusPill(state) {
             dot.style.background = '#22c55e';
             dot.style.boxShadow = '0 0 4px rgba(34, 197, 94, 0.6)';
             tacStatusPill.title = 'TagComplete: Ready';
-            // Fade out after 3s when ready
-            setTimeout(() => {
-                if (tacStatusPill) tacStatusPill.style.opacity = '0';
-            }, 3000);
             break;
         case 'error':
             dot.style.background = '#ef4444';
