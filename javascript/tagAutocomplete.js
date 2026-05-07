@@ -173,11 +173,26 @@ async function buildTagIndex() {
             tag._lower = lower;
             tag._aliasLower = tag[3] ? tag[3].toLowerCase() : null;
 
-            const key = lower.substring(0, 3);
-            if (!tagIndex.has(key)) {
-                tagIndex.set(key, []);
+            // Index by first 3 chars of EACH word (split by _ or space).
+            // This preserves the original substring behaviour so searching "uni"
+            // still finds "school_uniform" because "uniform" starts with "uni".
+            const words = lower.split(/[_ ]+/);
+            const keys = new Set();
+            words.forEach(word => {
+                if (word.length >= 3) {
+                    keys.add(word.substring(0, 3));
+                }
+            });
+            // Also index by the full tag prefix for single-word tags
+            if (lower.length >= 3) {
+                keys.add(lower.substring(0, 3));
             }
-            tagIndex.get(key).push(tag);
+            keys.forEach(key => {
+                if (!tagIndex.has(key)) {
+                    tagIndex.set(key, []);
+                }
+                tagIndex.get(key).push(tag);
+            });
         }
         // Yield to the browser so input events don't starve
         if (end < total) {
