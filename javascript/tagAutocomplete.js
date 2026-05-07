@@ -1754,6 +1754,11 @@ async function setup() {
 
     // Callback
     await processQueue(QUEUE_AFTER_SETUP, null);
+
+    // Preload tags in background after UI settles so first autocomplete feels instant
+    setTimeout(() => {
+        if (!tagsLoaded) ensureTagsLoaded();
+    }, 2000);
 }
 var tacLoading = false;
 onUiUpdate(async () => {
