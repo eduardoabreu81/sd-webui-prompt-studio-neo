@@ -32,6 +32,12 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 
 ## 🆕 What's New
 
+### v0.2.0 — Smoother typing & mobile support
+
+- **Faster tag suggestions** — the autocomplete list now appears more quickly, even with large tag databases like the merged Danbooru/e621 list
+- **Much smoother typing on mobile** — typing in the prompt box no longer lags or stutters on phones and tablets
+- **Lower input delay** — reduced waiting time between keystrokes and results appearing on screen
+
 ### v0.1.2 — Bug fix batch
 
 - **Embedding manual refresh no longer crashes** — the `force_reload` kwarg was removed from Forge Neo; the refresh button now works cleanly
@@ -56,6 +62,13 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 ---
 
 ## 📖 Changelog
+
+### v0.2.0 — Smoother typing & mobile support
+- Tag search significantly faster thanks to an internal prefix index built on load
+- Input debounce tightened to keep up with fast typists without causing frame drops
+- Reduced DOM and memory churn during dropdown rendering
+- Fixed a mouseover listener leak that could accumulate over long sessions
+- Startup no longer blocks typing — the tag index is built in small chunks so the prompt box stays responsive while the extension initializes
 
 ### v0.1.2 — Bug fix batch
 - Embedding manual refresh (`tac_forceRefreshEmbeddings`) no longer throws `TypeError` on Forge Neo
@@ -95,21 +108,9 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - CivitAI trigger word lookup with SHA256 cache ✅
 - "After LoRA/LyCO" insertion option ✅
 
-### v0.2.0 — Tag Data Update *(planned)*
-- Updated Danbooru and e621 tag lists with current data
-- Better tag coverage for Pony, NoobAI, and Illustrious-based models
-
-### v0.3.0 — UX Improvements *(planned)*
-- Sort suggestions by relevance to tags already in the prompt
-- Use multiple tag list files at the same time
-
-### v0.4.0 — Smart Matching *(planned)*
-- Fuzzy matching — type abbreviations like `detco` to find `detached_collar`
-- Automatically switch tag list based on the currently loaded model
-
-### v1.0.0 — First Stable Release *(planned)*
-- All known issues resolved
-- Full Forge Neo compatibility guarantee
+### v0.2.0 — Smoother typing & mobile support ✅
+- Faster tag suggestions and reduced input delay ✅
+- Mobile typing no longer lags or stutters ✅
 
 ---
 

@@ -268,6 +268,7 @@ async function syncOptions() {
         showAllResults: opts["tac_showAllResults"],
         resultStepLength: opts["tac_resultStepLength"],
         delayTime: opts["tac_delayTime"],
+        useIndexedSearch: opts["tac_useIndexedSearch"],
         useWildcards: opts["tac_useWildcards"],
         sortWildcardResults: opts["tac_sortWildcardResults"],
         useEmbeddings: opts["tac_useEmbeddings"],
@@ -717,10 +718,10 @@ async function insertTextAtCursor(textArea, result, tagword, tabCompletedWithout
     updateInput(textArea);
 
     // Update previous tags with the edited prompt to prevent re-searching the same term
-    let weightedTags = [...prompt.matchAll(WEIGHT_REGEX)]
+    let weightedTags = [...newPrompt.matchAll(WEIGHT_REGEX)]
         .map(match => match[1])
         .sort((a, b) => a.length - b.length);
-    let tags = [...prompt.match(getTagRegex())].sort((a, b) => a.length - b.length);
+    let tags = [...newPrompt.match(getTagRegex())].sort((a, b) => a.length - b.length);
     
     if (weightedTags !== null && tags !== null) {
         const weightedSet = new Set(weightedTags);
@@ -728,6 +729,7 @@ async function insertTextAtCursor(textArea, result, tagword, tabCompletedWithout
         tags = workingTags.concat(weightedTags);
     }
     previousTags = tags;
+    tagword = ""; // Clear current tagword so next keystroke starts fresh
 
     // Callback
     let returns = await processQueueReturn(QUEUE_AFTER_INSERT, null, tagType, sanitizedText, newPrompt, textArea);
@@ -785,6 +787,7 @@ function addResultsToList(textArea, results, tagword, resetList) {
         }
     }
 
+    const fragment = document.createDocumentFragment();
     for (let i = resultCount; i < nextLength; i++) {
         let result = results[i];
 
@@ -1019,9 +1022,10 @@ function addResultsToList(textArea, results, tagword, resetList) {
             });
         }
 
-        // Add element to list
-        resultsList.appendChild(li);
+        // Add element to fragment
+        fragment.appendChild(li);
     }
+    resultsList.appendChild(fragment);
     resultCount = nextLength;
 
     if (resetList) {
@@ -1220,7 +1224,9 @@ async function ensureTagsLoaded() {
     if (TAC_CFG && TAC_CFG.tagFile && TAC_CFG.tagFile !== "None") {
         allTags = [];
         await loadTags(TAC_CFG);
-        await buildTagIndex();
+        if (TAC_CFG.useIndexedSearch) {
+            await buildTagIndex();
+        }
         tagsLoaded = true;
     }
 }
@@ -1347,12 +1353,33 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
 
         // Use indexed subset for 3+ characters, fallback to full scan otherwise
         let tagsToSearch = allTags;
-        if (tagword.length >= 3 && tagIndex.size > 0) {
-            const key = tagword.substring(0, 3);
-            tagsToSearch = tagIndex.get(key) || [];
+        if (TAC_CFG.useIndexedSearch && tagword.length >= 3 && tagIndex.size > 0) {
+            // Gather indexed subsets for every word in the tagword and merge without duplicates
+            const words = tagword.split(/[_\s]+/);
+            const seen = new Set();
+            const merged = [];
+            for (const w of words) {
+                const key = w.substring(0, 3);
+                if (!key) continue;
+                const subset = tagIndex.get(key);
+                if (subset) {
+                    for (const tag of subset) {
+                        if (!seen.has(tag)) {
+                            seen.add(tag);
+                            merged.push(tag);
+                        }
+                    }
+                }
+            }
+            tagsToSearch = merged.length > 0 ? merged : [];
         }
 
-        tagsToSearch.filter(fil).forEach(t => {
+        let filtered = tagsToSearch.filter(fil);
+        // If indexed search yields nothing, fallback to full scan to avoid missing results
+        if (filtered.length === 0 && tagsToSearch !== allTags) {
+            filtered = allTags.filter(fil);
+        }
+        filtered.forEach(t => {
             let result = new AutocompleteResult(t[0].trim(), ResultType.tag)
             result.category = t[1];
             result.count = t[2];
@@ -1438,8 +1465,11 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
         results = results.slice(0, TAC_CFG.maxResults + resultCountBeforeNormalTags);
     }
 
-    addResultsToList(textArea, results, tagword, true);
-    showResults(textArea);
+    // Defer DOM rendering to next frame so input stays responsive
+    requestAnimationFrame(() => {
+        addResultsToList(textArea, results, tagword, true);
+        showResults(textArea);
+    });
 }
 
 function navigateInList(textArea, event) {
@@ -1624,6 +1654,20 @@ function addAutocompleteToArea(area) {
                 setTimeout(() => { hideBlocked = false; }, 100);
             }
 
+            // Skip heavy autocomplete while deleting to prevent lag on backspace
+            const isDelete = e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward';
+            if (isDelete) {
+                // If prompt is empty, clean up; otherwise just hide without searching
+                if (!area.value.trim()) {
+                    previousTags = [];
+                    tagword = "";
+                    hideResults(area);
+                } else if (isVisible(area)) {
+                    hideResults(area);
+                }
+                return;
+            }
+
             await debouncedAutocomplete();
             checkKeywordInsertionUndo(area, e);
         });
@@ -1755,10 +1799,8 @@ async function setup() {
     // Callback
     await processQueue(QUEUE_AFTER_SETUP, null);
 
-    // Preload tags in background after UI settles so first autocomplete feels instant
-    setTimeout(() => {
-        if (!tagsLoaded) ensureTagsLoaded();
-    }, 2000);
+    // Preload tags immediately so first autocomplete feels instant
+    if (!tagsLoaded) ensureTagsLoaded();
 }
 var tacLoading = false;
 onUiUpdate(async () => {
