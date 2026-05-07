@@ -1808,74 +1808,88 @@ async function setup() {
 
     // Preload tags immediately so first autocomplete feels instant
     if (!tagsLoaded) {
-        createTacStatusPill();
+        createTacStatusButton();
         ensureTagsLoaded().then(() => {
-            updateTacStatusPill('ready');
+            updateTacStatusButton('ready');
         }).catch(() => {
-            updateTacStatusPill('error');
+            updateTacStatusButton('error');
         });
     } else {
-        createTacStatusPill();
-        updateTacStatusPill('ready');
+        createTacStatusButton();
+        updateTacStatusButton('ready');
     }
     console.timeEnd('[TAC] setup total');
 }
 
 // ------------------------------------------------------------------
-// Floating status pill (bottom-left to avoid clashing with diagnostics)
+// Status indicator button injected into the toolbar below Generate
 // ------------------------------------------------------------------
-let tacStatusPill = null;
+let tacStatusBtn = null;
 
-function createTacStatusPill() {
-    if (tacStatusPill) return;
-    tacStatusPill = document.createElement('div');
-    tacStatusPill.id = 'tac-status-pill';
-    tacStatusPill.style.cssText = `
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        background: rgba(17, 24, 39, 0.9);
-        border: 1px solid rgba(75, 85, 99, 0.5);
-        border-radius: 999px;
-        color: #e5e7eb;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-size: 11px;
-        font-weight: 600;
-        pointer-events: none;
-        opacity: 1;
-        transition: opacity 0.5s;
-    `;
-    tacStatusPill.innerHTML = `
-        <span id="tac-status-dot" style="width:8px;height:8px;border-radius:50%;background:#f59e0b;box-shadow:0 0 4px rgba(245,158,11,0.6);transition:background 0.3s,box-shadow 0.3s;"></span>
-        <span id="tac-status-label">TAC</span>
-    `;
-    document.body.appendChild(tacStatusPill);
+function createTacStatusButton() {
+    // Target the txt2img and img2img toolbars (#txt2img_tools, #img2img_tools)
+    const toolbars = [
+        gradioApp().querySelector('#txt2img_tools'),
+        gradioApp().querySelector('#img2img_tools')
+    ];
+
+    toolbars.forEach(toolbar => {
+        if (!toolbar || toolbar.querySelector('.tac-status-btn')) return;
+
+        const btn = document.createElement('button');
+        btn.className = 'tac-status-btn svelte-cmf5ev'; // try to match Gradio button styling
+        btn.type = 'button';
+        btn.title = 'TagComplete: Loading tags...';
+        btn.style.cssText = `
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: default;
+            outline: none;
+        `;
+        btn.innerHTML = `<span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;box-shadow:0 0 5px rgba(245,158,11,0.7);transition:background 0.3s,box-shadow 0.3s;"></span>`;
+        toolbar.appendChild(btn);
+
+        // Keep reference to txt2img toolbar only for updates
+        if (!tacStatusBtn && toolbar.id === 'txt2img_tools') {
+            tacStatusBtn = btn;
+        }
+    });
 }
 
-function updateTacStatusPill(state) {
-    if (!tacStatusPill) return;
-    const dot = tacStatusPill.querySelector('#tac-status-dot');
-    switch (state) {
-        case 'ready':
-            dot.style.background = '#22c55e';
-            dot.style.boxShadow = '0 0 4px rgba(34, 197, 94, 0.6)';
-            tacStatusPill.title = 'TagComplete: Ready';
-            break;
-        case 'error':
-            dot.style.background = '#ef4444';
-            dot.style.boxShadow = '0 0 4px rgba(239, 68, 68, 0.6)';
-            tacStatusPill.title = 'TagComplete: Error loading tags';
-            break;
-        default:
-            dot.style.background = '#f59e0b';
-            dot.style.boxShadow = '0 0 4px rgba(245, 158, 11, 0.6)';
-            tacStatusPill.title = 'TagComplete: Loading tags...';
-    }
+function updateTacStatusButton(state) {
+    const toolbars = [
+        gradioApp().querySelector('#txt2img_tools'),
+        gradioApp().querySelector('#img2img_tools')
+    ];
+    toolbars.forEach(toolbar => {
+        if (!toolbar) return;
+        const btn = toolbar.querySelector('.tac-status-btn');
+        if (!btn) return;
+        const dot = btn.querySelector('span');
+        switch (state) {
+            case 'ready':
+                dot.style.background = '#22c55e';
+                dot.style.boxShadow = '0 0 5px rgba(34, 197, 94, 0.7)';
+                btn.title = 'TagComplete: Ready';
+                break;
+            case 'error':
+                dot.style.background = '#ef4444';
+                dot.style.boxShadow = '0 0 5px rgba(239, 68, 68, 0.7)';
+                btn.title = 'TagComplete: Error loading tags';
+                break;
+            default:
+                dot.style.background = '#f59e0b';
+                dot.style.boxShadow = '0 0 5px rgba(245, 158, 11, 0.7)';
+                btn.title = 'TagComplete: Loading tags...';
+        }
+    });
 }
 var tacLoading = false;
 onUiUpdate(async () => {
