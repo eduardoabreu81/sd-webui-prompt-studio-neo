@@ -409,6 +409,11 @@ async function processQueue(queue, context, ...args) {
         await queue[i].call(context, ...args);
     }
 }
+
+// Parallel version for independent loads (e.g. QUEUE_FILE_LOAD)
+async function processQueueParallel(queue, context, ...args) {
+    await Promise.all(queue.map(fn => fn.call(context, ...args)));
+}
 // The same but with return values
 async function processQueueReturn(queue, context, ...args)
 {

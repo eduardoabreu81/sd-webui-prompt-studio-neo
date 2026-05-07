@@ -1699,8 +1699,8 @@ function addAutocompleteToArea(area) {
 // One-time setup, triggered from onUiUpdate
 async function setup() {
     console.time('[TAC] setup total');
-    // Load external files needed by completion extensions
-    await processQueue(QUEUE_FILE_LOAD, null);
+    // Load external files needed by completion extensions (parallel for speed)
+    await processQueueParallel(QUEUE_FILE_LOAD, null);
 
     // Find all textareas
     let textAreas = getTextAreas();
