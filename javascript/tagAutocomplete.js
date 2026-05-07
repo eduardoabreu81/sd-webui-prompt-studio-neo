@@ -160,6 +160,7 @@ let tagIndex = new Map();
 let tagsLoaded = false;
 
 async function buildTagIndex() {
+    console.time('[TAC] buildTagIndex');
     tagIndex.clear();
     const CHUNK_SIZE = 5000;
     const total = allTags.length;
@@ -199,9 +200,11 @@ async function buildTagIndex() {
             await new Promise(r => setTimeout(r, 0));
         }
     }
+    console.timeEnd('[TAC] buildTagIndex');
 }
 
 async function loadTags(c) {
+    console.time('[TAC] loadTags');
     // Load main tags and aliases
     if (allTags.length === 0 && c.tagFile && c.tagFile !== "None") {
         try {
@@ -212,6 +215,7 @@ async function loadTags(c) {
         }
     }
     await loadExtraTags(c);
+    console.timeEnd('[TAC] loadTags');
 }
 
 async function loadExtraTags(c) {
@@ -1221,6 +1225,7 @@ function checkKeywordInsertionUndo(textArea, event) {
 
 async function ensureTagsLoaded() {
     if (tagsLoaded) return;
+    console.time('[TAC] ensureTagsLoaded total');
     if (TAC_CFG && TAC_CFG.tagFile && TAC_CFG.tagFile !== "None") {
         allTags = [];
         await loadTags(TAC_CFG);
@@ -1229,6 +1234,7 @@ async function ensureTagsLoaded() {
         }
         tagsLoaded = true;
     }
+    console.timeEnd('[TAC] ensureTagsLoaded total');
 }
 
 async function autocomplete(textArea, prompt, fixedTag = null) {
@@ -1692,6 +1698,7 @@ function addAutocompleteToArea(area) {
 
 // One-time setup, triggered from onUiUpdate
 async function setup() {
+    console.time('[TAC] setup total');
     // Load external files needed by completion extensions
     await processQueue(QUEUE_FILE_LOAD, null);
 
@@ -1801,6 +1808,7 @@ async function setup() {
 
     // Preload tags immediately so first autocomplete feels instant
     if (!tagsLoaded) ensureTagsLoaded();
+    console.timeEnd('[TAC] setup total');
 }
 var tacLoading = false;
 onUiUpdate(async () => {
