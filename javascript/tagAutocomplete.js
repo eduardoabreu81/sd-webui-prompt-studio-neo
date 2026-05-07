@@ -157,6 +157,7 @@ const autocompleteCSS = `
 `;
 
 let tagIndex = new Map();
+let tagsLoaded = false;
 
 async function buildTagIndex() {
     tagIndex.clear();
@@ -319,10 +320,14 @@ async function syncOptions() {
         await loadExtraTags(newCFG);
     }
     // Reload tags if the tag file changed (after translations so extra tag translations get re-added)
-    if (!TAC_CFG || newCFG.tagFile !== TAC_CFG.tagFile || newCFG.extra.extraFile !== TAC_CFG.extra.extraFile) {
+    // On first run (TAC_CFG is null), we defer loading to avoid blocking the main thread during page startup.
+    // Tags will be loaded on-demand when the user first interacts with a prompt textarea.
+    if (TAC_CFG && (newCFG.tagFile !== TAC_CFG.tagFile || newCFG.extra.extraFile !== TAC_CFG.extra.extraFile)) {
         allTags = [];
+        tagsLoaded = false;
         await loadTags(newCFG);
         await buildTagIndex();
+        tagsLoaded = true;
     }
 
     // Refresh temp files if model sort order changed
@@ -1181,7 +1186,20 @@ function checkKeywordInsertionUndo(textArea, event) {
     }
 }
 
+async function ensureTagsLoaded() {
+    if (tagsLoaded) return;
+    if (TAC_CFG && TAC_CFG.tagFile && TAC_CFG.tagFile !== "None") {
+        allTags = [];
+        await loadTags(TAC_CFG);
+        await buildTagIndex();
+        tagsLoaded = true;
+    }
+}
+
 async function autocomplete(textArea, prompt, fixedTag = null) {
+    // Lazy-load tags on first interaction so startup doesn't block the main thread
+    await ensureTagsLoaded();
+
     // Return if the function is deactivated in the UI
     if (!isEnabled()) return;
 
@@ -1712,6 +1730,7 @@ onUiUpdate(async () => {
     if (TAC_CFG && !gradioApp().querySelector('.autocompleteParent')) {
         TAC_CFG = null;
         allTags = [];
+        tagsLoaded = false;
         embeddings = [];
         loras = [];
         lycos = [];
