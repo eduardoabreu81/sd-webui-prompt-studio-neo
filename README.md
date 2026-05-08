@@ -36,6 +36,7 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 
 - **Backspace no longer lags on mobile** — holding the delete key no longer triggers heavy translation handlers, making deletion smooth even on older phones
 - **Mid-prompt LoRA keywords fixed** — when using "After LORA/LyCO" insertion, trigger words now insert correctly even if the LoRA token is in the middle of the prompt (no more overwritten text)
+- **Multi-word tag search** — type any word from a tag with underscores and it will be found (e.g. `towards` → `walking_towards_viewer`)
 - **Intermediate word search** — type any word from a multi-word tag and it will be found (e.g. `ass` → `bulge_to_ass`, `towards` → `walking_towards_viewer`)
 
 ### v0.2.0 — Smoother typing & mobile support
@@ -55,6 +56,7 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 ### v0.2.1 — Mobile backspace fix & mid-prompt LoRA keywords
 - Backspace no longer triggers heavy translation handlers, eliminating lag when holding delete on mobile
 - Fixed "After LORA/LyCO" trigger word insertion corrupting text when the LoRA token is in the middle of the prompt
+- Multi-word tag search — type any word from a tag with underscores (e.g. `towards` → `walking_towards_viewer`)
 - Intermediate word search — type any word from a multi-word tag (e.g. `ass` → `bulge_to_ass`, `towards` → `walking_towards_viewer`)
 
 ### v0.2.0 — Smoother typing & mobile support
@@ -110,6 +112,7 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 ### v0.2.1 — Mobile backspace fix & mid-prompt LoRA keywords ✅
 - Backspace lag eliminated (updateRuby skipped on delete) ✅
 - Mid-prompt "After LORA/LyCO" trigger word insertion fixed ✅
+- Multi-word tag search (any word of a multi-word tag) ✅
 
 ### v0.2.0 — Smoother typing & mobile support ✅
 - Prefix-indexed tag search (toggleable) ✅
