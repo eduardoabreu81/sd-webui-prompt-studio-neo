@@ -46,7 +46,7 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - **Indexed search toggle** — new setting to switch between fast prefix-indexed mode and legacy full-scan mode ⭐
 - **Status indicator** — a small colored dot in the toolbar shows when the extension is loading (orange), ready (green), or encountered an error (red) ⭐
 
-Older releases: [v0.1.2](https://github.com/eduardoabreu81/sd-webui-tagcomplete-neo/releases), [v0.1.1](https://github.com/eduardoabreu81/sd-webui-tagcomplete-neo/releases), [v0.1.0](https://github.com/eduardoabreu81/sd-webui-tagcomplete-neo/releases)
+---
 
 ---
 
