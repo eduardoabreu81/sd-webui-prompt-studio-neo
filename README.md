@@ -32,6 +32,12 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 
 ## 🆕 What's New
 
+### v0.2.1 — Mobile backspace fix & mid-prompt LoRA keywords
+
+- **Backspace no longer lags on mobile** — holding the delete key no longer triggers heavy translation handlers, making deletion smooth even on older phones
+- **Mid-prompt LoRA keywords fixed** — when using "After LORA/LyCO" insertion, trigger words now insert correctly even if the LoRA token is in the middle of the prompt (no more overwritten text)
+- **Intermediate word search** — type any word from a multi-word tag and it will be found (e.g. `ass` → `bulge_to_ass`, `towards` → `walking_towards_viewer`)
+
 ### v0.2.0 — Smoother typing & mobile support
 
 - **Faster tag suggestions** — the autocomplete list now appears more quickly, even with large tag databases like the merged Danbooru/e621 list
@@ -39,7 +45,6 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - **Lower input delay** — reduced waiting time between keystrokes and results appearing on screen
 - **Indexed search toggle** — new setting to switch between fast prefix-indexed mode and legacy full-scan mode ⭐
 - **Status indicator** — a small colored dot in the toolbar shows when the extension is loading (orange), ready (green), or encountered an error (red) ⭐
-- **Space-to-underscore search** — mobile keyboards that insert spaces instead of underscores can now find tags like `walking_towards` by typing `walking towards` ⭐
 
 ### v0.1.2 — Bug fix batch
 
@@ -66,6 +71,11 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 
 ## 📖 Changelog
 
+### v0.2.1 — Mobile backspace fix & mid-prompt LoRA keywords
+- Backspace no longer triggers heavy translation handlers, eliminating lag when holding delete on mobile
+- Fixed "After LORA/LyCO" trigger word insertion corrupting text when the LoRA token is in the middle of the prompt
+- Intermediate word search — type any word from a multi-word tag (e.g. `ass` → `bulge_to_ass`, `towards` → `walking_towards_viewer`)
+
 ### v0.2.0 — Smoother typing & mobile support
 - Tag search significantly faster thanks to an internal prefix index built on load
 - Input debounce tightened to keep up with fast typists without causing frame drops
@@ -77,7 +87,6 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - Indexed search can be toggled on/off in Settings → Tag Autocomplete
 - Fixed crash when inserting tags containing apostrophes
 - Fixed broken bold highlight on tags with special characters
-- Backspace no longer triggers heavy translation handlers, eliminating lag when holding delete
 
 ### v0.1.2 — Bug fix batch
 - Embedding manual refresh (`tac_forceRefreshEmbeddings`) no longer throws `TypeError` on Forge Neo
@@ -116,6 +125,11 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - Extension resilience after Forge updates ✅
 - CivitAI trigger word lookup with SHA256 cache ✅
 - "After LoRA/LyCO" insertion option ✅
+
+### v0.2.1 — Mobile backspace fix & mid-prompt LoRA keywords ✅
+- Backspace lag eliminated (updateRuby skipped on delete) ✅
+- Mid-prompt "After LORA/LyCO" trigger word insertion fixed ✅
+- Intermediate word search (any word of a multi-word tag) ✅
 
 ### v0.2.0 — Smoother typing & mobile support ✅
 - Prefix-indexed tag search (toggleable) ✅
