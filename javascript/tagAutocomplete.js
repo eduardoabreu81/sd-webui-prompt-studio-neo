@@ -1640,7 +1640,6 @@ function addAutocompleteToArea(area) {
 
         // Debounced handlers per textarea to avoid shared timeout interference
         const debouncedAutocomplete = debounce(() => autocomplete(area, area.value), Math.min(TAC_CFG.delayTime, 50));
-        const debouncedAutocompleteDelete = debounce(() => autocomplete(area, area.value), 10);
         const debouncedUpdateRuby = debounce(() => updateRuby(area, area.value), 300);
 
         // Add autocomplete event listener
@@ -1657,13 +1656,15 @@ function addAutocompleteToArea(area) {
 
             const isDelete = e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward';
 
-            // Skip heavy translation update on delete to prevent lag, but keep autocomplete running
-            // so the dropdown stays updated while backspacing through a word
+            // Skip heavy translation update on delete to prevent lag.
+            // Run autocomplete immediately on delete (no debounce) so the dropdown
+            // stays perfectly in sync while backspacing; the indexed search is fast
+            // enough that this doesn't cause noticeable lag on modern devices.
             if (!isDelete) {
                 debouncedUpdateRuby();
                 await debouncedAutocomplete();
             } else {
-                debouncedAutocompleteDelete();
+                await autocomplete(area, area.value);
             }
             checkKeywordInsertionUndo(area, e);
         });
