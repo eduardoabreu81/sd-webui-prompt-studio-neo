@@ -286,6 +286,7 @@ async function syncOptions() {
         frequencyRecommendCap: opts["tac_frequencyRecommendCap"],
         frequencyIncludeAlias: opts["tac_frequencyIncludeAlias"],
         useStyleVars: opts["tac_useStyleVars"],
+        replaceSpacesWithUnderscores: opts["tac_replaceSpacesWithUnderscores"],
         // Insertion related settings
         replaceUnderscores: opts["tac_replaceUnderscores"],
         replaceUnderscoresExclusionList: opts["tac_undersocreReplacementExclusionList"],
