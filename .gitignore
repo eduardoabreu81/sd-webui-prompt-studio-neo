@@ -6,6 +6,10 @@ tags/tag_frequency.db
 # Documentação privada de contexto para IA
 # ============================================
 .github/copilot-instructions.md
+AGENTS.md
 AGENTS.local.md
-docs/PROJECT_LOG.md
+docs/
 .specstory/
+
+# IDE
+.vscode/

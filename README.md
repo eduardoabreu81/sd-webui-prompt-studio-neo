@@ -37,6 +37,8 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - **Faster tag suggestions** — the autocomplete list now appears more quickly, even with large tag databases like the merged Danbooru/e621 list
 - **Much smoother typing on mobile** — typing in the prompt box no longer lags or stutters on phones and tablets
 - **Lower input delay** — reduced waiting time between keystrokes and results appearing on screen
+- **Indexed search toggle** — new setting to switch between fast prefix-indexed mode and legacy full-scan mode ⭐
+- **Status indicator** — a small colored dot in the toolbar shows when the extension is loading (orange), ready (green), or encountered an error (red) ⭐
 
 ### v0.1.2 — Bug fix batch
 
@@ -69,6 +71,11 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - Reduced DOM and memory churn during dropdown rendering
 - Fixed a mouseover listener leak that could accumulate over long sessions
 - Startup no longer blocks typing — the tag index is built in small chunks so the prompt box stays responsive while the extension initializes
+- Extension parsers now load in parallel, cutting startup time from ~43s to ~7s on slower machines
+- Status indicator dot shows loading / ready / error state directly in the Forge Neo toolbar
+- Indexed search can be toggled on/off in Settings → Tag Autocomplete
+- Fixed crash when inserting tags containing apostrophes
+- Fixed broken bold highlight on tags with special characters
 
 ### v0.1.2 — Bug fix batch
 - Embedding manual refresh (`tac_forceRefreshEmbeddings`) no longer throws `TypeError` on Forge Neo
@@ -109,8 +116,26 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - "After LoRA/LyCO" insertion option ✅
 
 ### v0.2.0 — Smoother typing & mobile support ✅
-- Faster tag suggestions and reduced input delay ✅
+- Prefix-indexed tag search (toggleable) ✅
+- Tighter debounce and delete-event skipping ✅
+- DOM batching + deferred rendering ✅
+- Parallel extension loading (43s → ~7s startup) ✅
+- Status indicator dot in toolbar ✅
+- Apostrophe crash and highlight fixes ✅
 - Mobile typing no longer lags or stutters ✅
+
+### v0.3.0 — Tag data & relevance (planned)
+- Update Danbooru and e621 tag lists with current data
+- Better tag coverage for Pony / NoobAI / Illustrious models
+- Sort suggestions by relevance to tags already in the prompt
+- Use multiple tag list files simultaneously
+
+### v0.4.0 — Smart matching (planned)
+- Fuzzy matching (e.g. `detco` → `detached_collar`)
+- Auto-switch tag list based on the loaded model
+
+### v1.0.0 — Stable (planned)
+- All known issues resolved
 
 ---
 
@@ -121,10 +146,12 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 ### 🏷️ Tag Autocompletion
 
 - **Instant suggestions** as you type, sourced from Danbooru, e621, or merged lists
+- **Indexed search** — built-in prefix index for near-instant filtering on large tag lists; can be disabled in settings if needed ⭐
 - **Keyboard navigation** — arrow keys, Tab, Enter, Escape, all configurable
 - **Tag color coding** by category, with post count for relevance
 - **Alias and translation search** — find tags by their alternate names or translated terms
 - **Frequency sorting** — remembers your most-used tags and promotes them to the top ⭐
+- **Status indicator** — colored dot in the toolbar shows when the extension is loading, ready, or in error state ⭐
 
 ### ➕ Extra Networks
 
@@ -166,10 +193,15 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 | File | Source | Best for |
 |---|---|---|
 | `danbooru.csv` | Danbooru top-100k | Anime models (SD 1.5, SDXL) |
+| `danbooru_2025.csv` | Danbooru updated 2025 | Anime models (SD 1.5, SDXL) |
 | `e621.csv` | e621 top-100k | Furry / anthro models |
+| `e621_sfw.csv` | e621 SFW subset | Furry / anthro models (safe) |
 | `danbooru_e621_merged.csv` | Merged + unified categories | Pony, NoobAI, Illustrious |
+| `derpibooru.csv` | Derpibooru tags | MLP / cartoon models |
 | `extra-quality-tags.csv` | Curated set | Quality booster tags |
 | `EnglishDictionary.csv` | English dictionary | Photorealistic / non-booru models |
+| `demo-chants.json` | Demo presets | Prompt templates |
+| `noob_characters-chants.json` | NoobAI character presets | Character-based prompts |
 
 To switch lists, change **Tag filename** in **Settings → Tag Autocomplete**.
 
