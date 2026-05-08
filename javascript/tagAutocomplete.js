@@ -286,7 +286,6 @@ async function syncOptions() {
         frequencyRecommendCap: opts["tac_frequencyRecommendCap"],
         frequencyIncludeAlias: opts["tac_frequencyIncludeAlias"],
         useStyleVars: opts["tac_useStyleVars"],
-        replaceSpacesWithUnderscores: opts["tac_replaceSpacesWithUnderscores"],
         // Insertion related settings
         replaceUnderscores: opts["tac_replaceUnderscores"],
         replaceUnderscoresExclusionList: opts["tac_undersocreReplacementExclusionList"],
@@ -1289,25 +1288,6 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
 
         tagword = diff[0]
 
-        // When replaceSpacesWithUnderscores is enabled, look at the raw prompt text
-        // between the last delimiter and the tagword. If it contains spaces, join with underscores.
-        if (TAC_CFG.replaceSpacesWithUnderscores && tagword && !tagword.includes('_')) {
-            const tagwordPos = prompt.toLowerCase().lastIndexOf(tagword.toLowerCase());
-            if (tagwordPos !== -1) {
-                let phraseStart = tagwordPos;
-                while (phraseStart > 0 && ![',', '\n', '|'].includes(prompt[phraseStart - 1])) {
-                    phraseStart--;
-                }
-                const phrase = prompt.substring(phraseStart, tagwordPos + tagword.length).trim();
-                if (phrase.includes(' ')) {
-                    joinedTagword = phrase.replace(/ /g, '_').toLowerCase().replace(/[\n\r]/g, "");
-                    if (joinedTagword === tagword.toLowerCase().replace(/[\n\r]/g, "")) {
-                        joinedTagword = null;
-                    }
-                }
-            }
-        }
-
         // Guard for empty tagword
         if (tagword === null || tagword.length === 0) {
             hideResults(textArea);
@@ -1320,7 +1300,6 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
     results = [];
     resultCountBeforeNormalTags = 0;
     tagword = tagword.toLowerCase().replace(/[\n\r]/g, "");
-    let joinedTagword = null;
 
     // Needed for slicing check later
     let normalTags = false;
@@ -1428,77 +1407,6 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
                 results = results.concat(extraResults);
             }
         }
-    }
-
-    // If joinedTagword exists (space->underscore replacement), search for it too and merge results
-    if (joinedTagword && joinedTagword.length > 0 && normalTags) {
-        let joinedSearchRegex;
-        if (joinedTagword.startsWith("*")) {
-            joinedSearchRegex = new RegExp(`${escapeRegExp(joinedTagword.slice(1))}`, 'i');
-        } else {
-            joinedSearchRegex = new RegExp(`(^|[^a-zA-Z])${escapeRegExp(joinedTagword)}`, 'i');
-        }
-
-        let joinedBaseFilter = (x) => (x._lower || x[0].toLowerCase()).search(joinedSearchRegex) > -1;
-        let joinedAliasFilter = (x) => {
-            const al = x._aliasLower || (x[3] ? x[3].toLowerCase() : null);
-            return al && al.search(joinedSearchRegex) > -1;
-        };
-        let joinedTranslationFilter = (x) => {
-            const al = x._aliasLower || (x[3] ? x[3].toLowerCase() : null);
-            return (translations.has(x[0]) && translations.get(x[0]).toLowerCase().search(joinedSearchRegex) > -1)
-                || (al && al.split(",").some(y => translations.has(y) && translations.get(y).toLowerCase().search(joinedSearchRegex) > -1));
-        };
-
-        let joinedFil;
-        if (TAC_CFG.alias.searchByAlias && TAC_CFG.translation.searchByTranslation)
-            joinedFil = (x) => joinedBaseFilter(x) || joinedAliasFilter(x) || joinedTranslationFilter(x);
-        else if (TAC_CFG.alias.searchByAlias && !TAC_CFG.translation.searchByTranslation)
-            joinedFil = (x) => joinedBaseFilter(x) || joinedAliasFilter(x);
-        else if (TAC_CFG.translation.searchByTranslation && !TAC_CFG.alias.searchByAlias)
-            joinedFil = (x) => joinedBaseFilter(x) || joinedTranslationFilter(x);
-        else
-            joinedFil = (x) => joinedBaseFilter(x);
-
-        // Use index if applicable
-        let joinedTagsToSearch = allTags;
-        if (TAC_CFG.useIndexedSearch && joinedTagword.length >= 3 && tagIndex.size > 0) {
-            const jwords = joinedTagword.split(/[_\s]+/);
-            const jseen = new Set();
-            const jmerged = [];
-            for (const w of jwords) {
-                const key = w.substring(0, 3);
-                if (!key) continue;
-                const subset = tagIndex.get(key);
-                if (subset) {
-                    for (const tag of subset) {
-                        if (!jseen.has(tag)) {
-                            jseen.add(tag);
-                            jmerged.push(tag);
-                        }
-                    }
-                }
-            }
-            joinedTagsToSearch = jmerged.length > 0 ? jmerged : [];
-        }
-
-        let joinedFiltered = joinedTagsToSearch.filter(joinedFil);
-        if (joinedFiltered.length === 0 && joinedTagsToSearch !== allTags) {
-            joinedFiltered = allTags.filter(joinedFil);
-        }
-
-        const existingTexts = new Set(results.map(r => r.text));
-        joinedFiltered.forEach(t => {
-            const text = t[0].trim();
-            if (!existingTexts.has(text)) {
-                let result = new AutocompleteResult(text, ResultType.tag);
-                result.category = t[1];
-                result.count = t[2];
-                result.aliases = t[3];
-                results.push(result);
-                existingTexts.add(text);
-            }
-        });
     }
 
     // Guard for empty results

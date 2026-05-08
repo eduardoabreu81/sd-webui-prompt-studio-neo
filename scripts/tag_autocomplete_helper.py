@@ -636,7 +636,6 @@ def on_ui_settings():
         "tac_resultStepLength": shared.OptionInfo(100, "How many results to load at once"),
         "tac_delayTime": shared.OptionInfo(100, "Time in ms to wait before triggering completion again").needs_restart(),
         "tac_useIndexedSearch": shared.OptionInfo(True, "Use indexed search (faster, recommended for slower PCs / mobile)").info("Builds a prefix index for tags. Disable to use legacy full-scan mode if you experience missing results"),
-        "tac_replaceSpacesWithUnderscores": shared.OptionInfo(False, "Treat spaces as underscores in tag search").info("When typing 'walking towards', also searches for 'walking_towards'. Useful for mobile keyboards that insert spaces instead of underscores"),
         "tac_useWildcards": shared.OptionInfo(True, "Search for wildcards"),
         "tac_sortWildcardResults": shared.OptionInfo(True, "Sort wildcard file contents alphabetically").info("If your wildcard files have a specific custom order, disable this to keep it"),
         "tac_wildcardExclusionList": shared.OptionInfo("", "Wildcard folder exclusion list").info("Add folder names that shouldn't be searched for wildcards, separated by comma.").needs_restart(),

@@ -78,7 +78,6 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - Fixed crash when inserting tags containing apostrophes
 - Fixed broken bold highlight on tags with special characters
 - Backspace no longer triggers heavy translation handlers, eliminating lag when holding delete
-- Space-to-underscore search lets mobile users find underscore tags by typing spaces
 
 ### v0.1.2 — Bug fix batch
 - Embedding manual refresh (`tac_forceRefreshEmbeddings`) no longer throws `TypeError` on Forge Neo
