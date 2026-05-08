@@ -1662,8 +1662,21 @@ function addAutocompleteToArea(area) {
                     previousTags = [];
                     tagword = "";
                     hideResults(area);
-                } else if (isVisible(area)) {
-                    hideResults(area);
+                } else {
+                    // Update previousTags so state stays consistent for the next keystroke
+                    let weightedTags = [...area.value.matchAll(WEIGHT_REGEX)]
+                        .map(match => match[1])
+                        .sort((a, b) => a.length - b.length);
+                    let tags = [...area.value.match(getTagRegex())].sort((a, b) => a.length - b.length);
+                    if (weightedTags !== null && tags !== null) {
+                        const weightedSet = new Set(weightedTags);
+                        let workingTags = tags.filter(tag => !weightedSet.has(tag) || tag.startsWith("<[") || tag.startsWith("$("));
+                        tags = workingTags.concat(weightedTags);
+                    }
+                    if (tags && tags.length > 0) {
+                        previousTags = tags;
+                    }
+                    if (isVisible(area)) hideResults(area);
                 }
                 return;
             }
