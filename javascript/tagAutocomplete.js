@@ -1288,12 +1288,22 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
 
         tagword = diff[0]
 
-        // When replaceSpacesWithUnderscores is enabled and multiple new words were typed,
-        // also search for the joined underscore version (e.g. "walking towards" -> "walking_towards")
-        if (TAC_CFG.replaceSpacesWithUnderscores && diff.length > 1) {
-            joinedTagword = diff.join("_").toLowerCase().replace(/[\n\r]/g, "");
-            if (joinedTagword === tagword.toLowerCase().replace(/[\n\r]/g, "")) {
-                joinedTagword = null; // same as tagword, skip duplicate search
+        // When replaceSpacesWithUnderscores is enabled, look at the raw prompt text
+        // between the last delimiter and the tagword. If it contains spaces, join with underscores.
+        if (TAC_CFG.replaceSpacesWithUnderscores && tagword && !tagword.includes('_')) {
+            const tagwordPos = prompt.toLowerCase().lastIndexOf(tagword.toLowerCase());
+            if (tagwordPos !== -1) {
+                let phraseStart = tagwordPos;
+                while (phraseStart > 0 && ![',', '\n', '|'].includes(prompt[phraseStart - 1])) {
+                    phraseStart--;
+                }
+                const phrase = prompt.substring(phraseStart, tagwordPos + tagword.length).trim();
+                if (phrase.includes(' ')) {
+                    joinedTagword = phrase.replace(/ /g, '_').toLowerCase().replace(/[\n\r]/g, "");
+                    if (joinedTagword === tagword.toLowerCase().replace(/[\n\r]/g, "")) {
+                        joinedTagword = null;
+                    }
+                }
             }
         }
 
