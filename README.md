@@ -39,6 +39,7 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - **Lower input delay** — reduced waiting time between keystrokes and results appearing on screen
 - **Indexed search toggle** — new setting to switch between fast prefix-indexed mode and legacy full-scan mode ⭐
 - **Status indicator** — a small colored dot in the toolbar shows when the extension is loading (orange), ready (green), or encountered an error (red) ⭐
+- **Space-to-underscore search** — mobile keyboards that insert spaces instead of underscores can now find tags like `walking_towards` by typing `walking towards` ⭐
 
 ### v0.1.2 — Bug fix batch
 
@@ -76,6 +77,8 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - Indexed search can be toggled on/off in Settings → Tag Autocomplete
 - Fixed crash when inserting tags containing apostrophes
 - Fixed broken bold highlight on tags with special characters
+- Backspace no longer triggers heavy translation handlers, eliminating lag when holding delete
+- Space-to-underscore search lets mobile users find underscore tags by typing spaces
 
 ### v0.1.2 — Bug fix batch
 - Embedding manual refresh (`tac_forceRefreshEmbeddings`) no longer throws `TypeError` on Forge Neo
