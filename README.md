@@ -110,7 +110,6 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 ### v0.2.1 — Mobile backspace fix & mid-prompt LoRA keywords ✅
 - Backspace lag eliminated (updateRuby skipped on delete) ✅
 - Mid-prompt "After LORA/LyCO" trigger word insertion fixed ✅
-- Intermediate word search (any word of a multi-word tag) ✅
 
 ### v0.2.0 — Smoother typing & mobile support ✅
 - Prefix-indexed tag search (toggleable) ✅
