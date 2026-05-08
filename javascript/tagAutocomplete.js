@@ -1654,34 +1654,14 @@ function addAutocompleteToArea(area) {
                 setTimeout(() => { hideBlocked = false; }, 100);
             }
 
-            // Skip heavy autocomplete while deleting to prevent lag on backspace
             const isDelete = e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward';
-            if (isDelete) {
-                // If prompt is empty, clean up; otherwise just hide without searching
-                if (!area.value.trim()) {
-                    previousTags = [];
-                    tagword = "";
-                    hideResults(area);
-                } else {
-                    // Update previousTags so state stays consistent for the next keystroke
-                    let weightedTags = [...area.value.matchAll(WEIGHT_REGEX)]
-                        .map(match => match[1])
-                        .sort((a, b) => a.length - b.length);
-                    let tags = [...area.value.match(getTagRegex())].sort((a, b) => a.length - b.length);
-                    if (weightedTags !== null && tags !== null) {
-                        const weightedSet = new Set(weightedTags);
-                        let workingTags = tags.filter(tag => !weightedSet.has(tag) || tag.startsWith("<[") || tag.startsWith("$("));
-                        tags = workingTags.concat(weightedTags);
-                    }
-                    if (tags && tags.length > 0) {
-                        previousTags = tags;
-                    }
-                    if (isVisible(area)) hideResults(area);
-                }
-                return;
+
+            // Skip heavy translation update on delete to prevent lag, but keep autocomplete running
+            // so the dropdown stays updated while backspacing through a word
+            if (!isDelete) {
+                debouncedUpdateRuby();
             }
 
-            debouncedUpdateRuby();
             await debouncedAutocomplete();
             checkKeywordInsertionUndo(area, e);
         });
