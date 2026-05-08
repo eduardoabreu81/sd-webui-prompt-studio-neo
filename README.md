@@ -46,26 +46,7 @@ Fork of [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-web
 - **Indexed search toggle** — new setting to switch between fast prefix-indexed mode and legacy full-scan mode ⭐
 - **Status indicator** — a small colored dot in the toolbar shows when the extension is loading (orange), ready (green), or encountered an error (red) ⭐
 
-### v0.1.2 — Bug fix batch
-
-- **Embedding manual refresh no longer crashes** — the `force_reload` kwarg was removed from Forge Neo; the refresh button now works cleanly
-- **LoRAs always visible on startup** — the previous alias update inadvertently caused LoRAs to disappear until a model was loaded; filesystem scan is now always used as the primary source
-- **Symlinked embeddings supported** — paths are fully resolved before comparison, so embeddings linked from outside the `models/embeddings/` folder no longer crash the callback
-- **Frequency database stability** — fixed a potential `NameError` on first run when the SQLite connection itself could not be established
-
-### v0.1.1 — LoRA alias fix
-
-- **LoRA/LyCORIS token no longer blinks** — the inserted `<lora:…>` token now uses the same identifier that Forge Neo expects (respects your "When adding to prompt, refer to LoRA by" setting: *Alias from file* or *Filename*) ⭐
-
-### v0.1.0 — Forge Neo Baseline
-
-- **Full Forge Neo compatibility** — extension loads and runs correctly on Forge Neo without crashes or silent failures
-- **Booru tags restored** — tag suggestions now appear correctly in the prompt box
-- **Reliable initialization** — autocomplete activates on every WebUI launch, including the second and beyond
-- **Instant embedding reload** — embeddings update without restarting the WebUI
-- **Trigger word auto-fetch from CivitAI** — if a LoRA has no local trigger words set, the extension can look them up automatically from CivitAI ⭐
-- **Trigger word cache by file hash** — fetched words are saved alongside the model and only re-fetched when the file itself changes ⭐
-- **"After LoRA/LyCO" insertion position** — new option to place trigger words immediately after the `<lora:…>` token instead of only at the start or end of the prompt ⭐
+Older releases: [v0.1.2](https://github.com/eduardoabreu81/sd-webui-tagcomplete-neo/releases), [v0.1.1](https://github.com/eduardoabreu81/sd-webui-tagcomplete-neo/releases), [v0.1.0](https://github.com/eduardoabreu81/sd-webui-tagcomplete-neo/releases)
 
 ---
 
