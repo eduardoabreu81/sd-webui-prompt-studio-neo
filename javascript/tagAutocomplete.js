@@ -686,8 +686,10 @@ async function insertTextAtCursor(textArea, result, tagword, tabCompletedWithout
             else if (TAC_CFG.modelKeywordLocation === "End of prompt")
                 newPrompt = `${newPrompt}, ${keywords}`; // Insert keywords
             else if (TAC_CFG.modelKeywordLocation === "After LORA/LyCO") {
-                // Insert keywords immediately after the <lora:…> token
-                newPrompt = prompt.substring(0, editStart) + sanitizedText + `, ${keywords}` + optionalSeparator + prompt.substring(editEnd);
+                // Insert keywords immediately after the <lora:…> token in the already-built prompt
+                let loraStart = editStart + match.index;
+                let loraEnd = loraStart + sanitizedText.length;
+                newPrompt = newPrompt.substring(0, loraEnd) + `, ${keywords}` + newPrompt.substring(loraEnd);
             } else {
                 // "Before LORA/LyCO" (default)
                 let keywordStart = prompt[editStart - 1] === " " ? editStart - 1 : editStart;
