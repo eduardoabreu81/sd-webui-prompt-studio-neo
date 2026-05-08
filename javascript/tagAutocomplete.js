@@ -1290,7 +1290,6 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
 
         // When replaceSpacesWithUnderscores is enabled and multiple new words were typed,
         // also search for the joined underscore version (e.g. "walking towards" -> "walking_towards")
-        let joinedTagword = null;
         if (TAC_CFG.replaceSpacesWithUnderscores && diff.length > 1) {
             joinedTagword = diff.join("_").toLowerCase().replace(/[\n\r]/g, "");
             if (joinedTagword === tagword.toLowerCase().replace(/[\n\r]/g, "")) {
@@ -1310,6 +1309,7 @@ async function autocomplete(textArea, prompt, fixedTag = null) {
     results = [];
     resultCountBeforeNormalTags = 0;
     tagword = tagword.toLowerCase().replace(/[\n\r]/g, "");
+    let joinedTagword = null;
 
     // Needed for slicing check later
     let normalTags = false;
