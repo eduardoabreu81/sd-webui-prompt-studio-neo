@@ -4,15 +4,22 @@
 /src/node_modules
 /src/package-lock.json
 /styles/extensions/demo
-__pycache__
+__pycache__/
+tags/temp/
+tags/tag_frequency.db
+
 # ============================================
 # Documentação privada de contexto para IA
 # (contém decisões internas e histórico)
 # ============================================
 .specstory/
+AGENTS.md
 AGENTS.local.md
 docs/PROJECT_LOG.md
+docs/PROJECT_LOG-*.md
+docs/PROJECT_CONTEXT.md
+docs/FORGE_DIAGNOSTICS_SPEC.md
 .github/copilot-instructions.md
-# Internal agent documentation
-AGENTS.md
 
+# IDE
+.vscode/
