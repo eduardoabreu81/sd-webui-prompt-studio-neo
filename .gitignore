@@ -18,6 +18,8 @@ AGENTS.local.md
 docs/PROJECT_LOG.md
 docs/PROJECT_LOG-*.md
 docs/PROJECT_CONTEXT.md
+docs/PROJECT_CONTEXT-*.md
+docs/AGENTS-*.md
 docs/FORGE_DIAGNOSTICS_SPEC.md
 .github/copilot-instructions.md
 
