@@ -450,7 +450,7 @@ def on_app_started(_: gr.Blocks, app: FastAPI):
 
 def on_ui_settings():
     try:
-        section = ('paio_neo', 'Prompt All-in-One Neo')
+        section = ('prompt_studio_neo', 'Prompt Studio Neo')
 
         shared.opts.add_option(
             'paio_neo_civitai_api_key',

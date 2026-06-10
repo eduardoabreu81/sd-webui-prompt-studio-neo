@@ -609,7 +609,7 @@ write_temp_files()
 
 # Register autocomplete options
 def on_ui_settings():
-    TAC_SECTION = ("tac", "Tag Autocomplete")
+    TAC_SECTION = ("prompt_studio_neo", "Prompt Studio Neo")
 
     # Dictionary of function options and their explanations
     frequency_sort_functions = {
