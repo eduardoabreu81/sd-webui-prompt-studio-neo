@@ -788,6 +788,14 @@ def get_style_mtime():
 last_style_mtime = get_style_mtime()
 
 def api_tac(_: gr.Blocks, app: FastAPI):
+    # Surface a persisted-off master switch loudly: with tac_active False the
+    # frontend attaches to nothing and fails silently otherwise.
+    try:
+        if not getattr(shared.opts, "tac_active", True):
+            print("[Tag Autocomplete Neo] WARNING: 'Enable Tag Autocompletion' (tac_active) is OFF — no autocomplete will appear. Re-enable it in Settings > Prompt Studio Neo.")
+    except Exception:
+        pass
+
     async def get_json_info(base_path: Path, filename: str = None):
         if base_path is None or (not base_path.exists()):
             return Response(status_code=404)

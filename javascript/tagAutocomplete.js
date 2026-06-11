@@ -1862,6 +1862,11 @@ function updateTacStatusDot(state) {
             tacStatusDot.style.boxShadow = '0 0 5px rgba(239, 68, 68, 0.8)';
             tacStatusDot.title = 'TagComplete: Error loading tags';
             break;
+        case 'disabled':
+            tacStatusDot.style.background = '#6b7280';
+            tacStatusDot.style.boxShadow = 'none';
+            tacStatusDot.title = 'TagComplete: Disabled ("Enable Tag Autocompletion" is unchecked in Settings)';
+            break;
         default:
             tacStatusDot.style.background = '#f59e0b';
             tacStatusDot.style.boxShadow = '0 0 5px rgba(245, 158, 11, 0.8)';
@@ -1892,5 +1897,11 @@ onUiUpdate(async () => {
     await syncOptions();
     // Await setup() so tacLoading stays true until fully done (#328).
     await setup();
+    // A persisted tac_active=false disables everything with no visible symptom;
+    // make it diagnosable from the console and the status dot.
+    if (TAC_CFG && !TAC_CFG.activeIn.global) {
+        console.warn('[Tag Autocomplete Neo] Autocomplete is DISABLED — "Enable Tag Autocompletion" is unchecked in Settings > Prompt Studio Neo.');
+        updateTacStatusDot('disabled');
+    }
     tacLoading = false;
 });
