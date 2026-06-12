@@ -38,6 +38,12 @@
                                 <span class="qp-family-name">{{ family }}</span>
                             </label>
                             <div class="qp-btn qp-btn-xs"
+                                 v-if="scaffoldFor(family)"
+                                 @click="insertScaffold(family)"
+                                 title="Replace the prompt with the suggested structured skeleton for this model">
+                                Insert scaffold
+                            </div>
+                            <div class="qp-btn qp-btn-xs"
                                  @click="toggleEditFamily(family)">
                                 {{ editingFamily === family ? 'Done' : 'Edit' }}
                             </div>
@@ -220,7 +226,7 @@ export default {
     name: 'QualityPresets',
     components: {IconSvg},
     mixins: [LanguageMixin],
-    emits: ['insert-positive', 'insert-negative'],
+    emits: ['insert-positive', 'insert-negative', 'insert-scaffold'],
     data() {
         return {
             isOpen: false,
@@ -308,6 +314,23 @@ export default {
         },
 
         // ---- Templates tab ---------------------------------------------------
+        scaffoldFor(family) {
+            // Structured prompt skeleton for models that benefit from it.
+            // Anima (Qwen text encoder) understands key-value structured prompts;
+            // the tags line carries the official quality/safety prefix.
+            if (family !== 'Anima') return null
+            const res = this.resolvedTags(family)
+            return {
+                positive: `tags: ${res.pos.join(', ')}\nchar1: \nbackground: `,
+                negative: res.neg.join(', '),
+            }
+        },
+        insertScaffold(family) {
+            const scaffold = this.scaffoldFor(family)
+            if (!scaffold) return
+            this.$emit('insert-scaffold', scaffold)
+            this.close()
+        },
         resolvedTags(family) {
             const override = this.builtinOverrides[family]
             const base     = this.builtinTemplates[family] || {}

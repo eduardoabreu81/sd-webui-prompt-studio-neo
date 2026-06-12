@@ -134,7 +134,8 @@
                          v-model:language-code="languageCode"
                          :translate-apis="translateApis" :languages="languages"
                          @insert-positive="onQualityPresetsInsertPositive"
-                         @insert-negative="onQualityPresetsInsertNegative"/>
+                         @insert-negative="onQualityPresetsInsertNegative"
+                         @insert-scaffold="onQualityPresetsInsertScaffold"/>
         <about ref="about" v-model:language-code="languageCode"
                :translate-apis="translateApis" :languages="languages" />
 
@@ -1266,6 +1267,22 @@ export default {
             if (!item) return
             const negItem = this.prompts.find(p => p.tab === item.tab && p.neg)
             if (negItem && this.$refs[negItem.id]) this.$refs[negItem.id][0].prependTags(tags)
+        },
+        onQualityPresetsInsertScaffold(scaffold) {
+            // Replace the current tab's prompts with a structured skeleton
+            // (same native-textarea mechanism as the paste flow).
+            const item = this.prompts.find(p => p.id === this.qualityPresetsCurrentId)
+            if (!item) return
+            const apply = (target, text) => {
+                if (!target || !target.$textarea || text === undefined) return
+                target.$textarea.value = text
+                target.$textarea.dispatchEvent(new Event('input'))
+                if (this.$refs[target.id]) this.$refs[target.id][0].onTextareaChange(true)
+            }
+            apply(this.prompts.find(p => p.tab === item.tab && !p.neg), scaffold.positive)
+            if (scaffold.negative) {
+                apply(this.prompts.find(p => p.tab === item.tab && p.neg), scaffold.negative)
+            }
         },
         onSwitchTheme() {
             /*if (common.gradioApp().classList.contains(this.theme)) {
