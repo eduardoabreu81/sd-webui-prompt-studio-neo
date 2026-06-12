@@ -21,6 +21,7 @@ docs/PROJECT_CONTEXT.md
 docs/PROJECT_CONTEXT-*.md
 docs/AGENTS-*.md
 docs/FORGE_DIAGNOSTICS_SPEC.md
+docs/research/mvp-v1/
 .github/copilot-instructions.md
 
 # IDE

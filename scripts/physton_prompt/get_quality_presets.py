@@ -126,7 +126,39 @@ BUILTIN_TEMPLATES = {
         'positive_prefix': [],
         'negative_prefix': [],
     },
+
+    # --- Anima (CircleStone Labs + Comfy Org, Qwen-3 text encoder) ---
+    #   Official README recommendation:
+    #     positive prefix: "masterpiece, best quality, score_7, safe, "
+    #     negative: "worst quality, low quality, score_1, score_2, score_3, artist name"
+    #   https://huggingface.co/circlestone-labs/Anima
+    'Anima': {
+        'positive_prefix': ['masterpiece', 'best quality', 'score_7', 'safe'],
+        'negative_prefix': ['worst quality', 'low quality', 'score_1', 'score_2', 'score_3', 'artist name'],
+    },
 }
+
+# ---------------------------------------------------------------------------
+# Filename-based family detection (fallback when CivitAI has no answer,
+# e.g. local merges or models not hosted on CivitAI).
+#
+# Matching is token-based (split on non-alphanumeric) instead of substring,
+# so 'anima-base-v1.0' matches Anima but 'animagine-xl' does not.
+# ---------------------------------------------------------------------------
+_FILENAME_FAMILY_TOKENS = {
+    'anima': 'Anima',
+}
+
+
+def detect_family_by_filename(filename_stem: str) -> str:
+    """Return a BUILTIN_TEMPLATES family for a checkpoint filename stem, or ''."""
+    import re as _re
+    tokens = _re.split(r'[^a-z0-9]+', filename_stem.lower())
+    for token in tokens:
+        family = _FILENAME_FAMILY_TOKENS.get(token)
+        if family:
+            return family
+    return ''
 
 # ---------------------------------------------------------------------------
 # Helpers: read SHA-256 from a safetensors file
@@ -353,6 +385,23 @@ def detect_preset_for_checkpoint(filepath: str) -> dict:
                 'auto_insert': preset.get('auto_insert', False),
             })
             return result
+
+    # -- Step 3: filename-token family detection (no CivitAI answer) --------
+    family = detect_family_by_filename(filename_stem)
+    if family:
+        result['base_model'] = result['base_model'] or family
+        enabled = storage.get('builtin_enabled', {})
+        if enabled.get(family, True):
+            overrides = storage.get('builtin_overrides', {})
+            template = overrides.get(family) or BUILTIN_TEMPLATES.get(family)
+            if template:
+                result.update({
+                    'source': 'builtin',
+                    'positive_prefix': list(template.get('positive_prefix', [])),
+                    'negative_prefix': list(template.get('negative_prefix', [])),
+                    'auto_insert': False,
+                })
+                return result
 
     # -- No match -----------------------------------------------------------
     return result

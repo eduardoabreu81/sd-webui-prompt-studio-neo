@@ -113,6 +113,11 @@
                                      :class="{disabled: scanningIndex === idx}">
                                     Detect
                                 </div>
+                                <div class="qp-btn qp-btn-xs"
+                                     @click="pinCheckpoint(ckpt)"
+                                     title="Save suggested positive/negative tags pinned to this exact checkpoint">
+                                    📌 Pin tags
+                                </div>
                             </div>
                         </div>
                         <div class="qp-empty" v-if="!loadingCheckpoints && !checkpoints.length">
@@ -124,7 +129,8 @@
                 <!-- ================================================ CUSTOM -->
                 <div class="qp-panel" v-if="activeTab === 'custom'">
                     <div class="qp-panel-hint">
-                        Custom presets are matched by filename substring. They take priority over
+                        Custom presets are matched by filename substring, or pinned to an exact
+                        checkpoint via 📌 Pin tags (Checkpoints tab). They take priority over
                         built-in templates.
                     </div>
 
@@ -139,7 +145,15 @@
                             <label>Name</label>
                             <input type="text" v-model="newPreset.name" placeholder="My Pony Models"/>
                         </div>
-                        <div class="qp-form-row">
+                        <div class="qp-form-row qp-pinned-row" v-if="newPreset.match_exact_str">
+                            <label>Pinned to checkpoint</label>
+                            <div class="qp-pinned-value">
+                                📌 {{ newPreset.match_exact_str }}
+                                <span class="qp-pinned-clear" @click="newPreset.match_exact_str = ''"
+                                      title="Remove pin">×</span>
+                            </div>
+                        </div>
+                        <div class="qp-form-row" v-if="!newPreset.match_exact_str">
                             <label>Filename substrings (comma-separated)</label>
                             <input type="text" v-model="newPreset.match_substr_str"
                                    placeholder="pony, pdxl"/>
@@ -174,6 +188,10 @@
                                 <div class="qp-preset-del" @click="onDeletePreset(idx)">
                                     <icon-svg name="remove"/>
                                 </div>
+                            </div>
+                            <div class="qp-preset-meta"
+                                 v-if="preset.match_exact && preset.match_exact.length">
+                                📌 pinned: {{ preset.match_exact.join(', ') }}
                             </div>
                             <div class="qp-preset-meta"
                                  v-if="preset.match_substr && preset.match_substr.length">
@@ -388,10 +406,31 @@ export default {
             this.scanningAll = false
         },
 
+        pinCheckpoint(ckpt) {
+            // Pre-fill the custom preset form pinned (match_exact) to this checkpoint.
+            // Tags default to the detected family template when available.
+            const stem = (ckpt.filename || '').replace(/\.[^.]+$/, '')
+            const family = ckpt.base_model || ''
+            const res = family && this.builtinTemplates[family]
+                ? this.resolvedTags(family)
+                : {pos: [], neg: []}
+            this.newPreset = {
+                name: ckpt.title || stem,
+                match_exact_str: stem,
+                match_substr_str: '',
+                positive_prefix_str: res.pos.join(', '),
+                negative_prefix_str: res.neg.join(', '),
+                auto_insert: false,
+            }
+            this.showAddForm = true
+            this.activeTab = 'custom'
+        },
+
         // ---- Custom tab ------------------------------------------------------
         _resetNewPreset() {
             this.newPreset = {
                 name: '',
+                match_exact_str: '',
                 match_substr_str: '',
                 positive_prefix_str: '',
                 negative_prefix_str: '',
@@ -402,7 +441,8 @@ export default {
             if (!this.newPreset.name.trim()) return
             this.userPresets.push({
                 name: this.newPreset.name.trim(),
-                match_exact: [],
+                match_exact: (this.newPreset.match_exact_str || '')
+                    .split(',').map(s => s.trim()).filter(Boolean),
                 match_substr: this.newPreset.match_substr_str
                     .split(',').map(s => s.trim()).filter(Boolean),
                 positive_prefix: this.newPreset.positive_prefix_str
@@ -700,6 +740,26 @@ export default {
 }
 .qp-preset-del:hover { opacity: .9; }
 .qp-preset-meta { font-size: 11px; opacity: .5; margin-bottom: 4px; }
+
+.qp-pinned-value {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 4px 8px;
+    border: 1px dashed var(--border-color-primary, #555);
+    border-radius: 4px;
+    opacity: .9;
+}
+
+.qp-pinned-clear {
+    margin-left: auto;
+    cursor: pointer;
+    opacity: .6;
+    font-size: 14px;
+}
+
+.qp-pinned-clear:hover { opacity: 1; }
 
 .qp-empty {
     font-size: 12px;
