@@ -1,4 +1,4 @@
-﻿const styleColors = {
+const styleColors = {
     "--results-neutral-text": ["#e0e0e0","black"],
     "--results-bg": ["#0b0f19", "#ffffff"],
     "--results-border-color": ["#4b5563", "#e5e7eb"],
@@ -707,8 +707,9 @@ async function insertTextAtCursor(textArea, result, tagword, tabCompletedWithout
 
     // Insert into prompt textbox and reposition cursor
     textArea.value = newPrompt;
-    textArea.selectionStart = afterInsertCursorPos + optionalSeparator.length + keywordsLength;
-    textArea.selectionEnd = textArea.selectionStart
+    const finalCursorPos = afterInsertCursorPos + optionalSeparator.length + keywordsLength;
+    textArea.selectionStart = finalCursorPos;
+    textArea.selectionEnd = finalCursorPos;
 
     // Set self trigger flag to show wildcard contents after the filename was inserted
     if ([ResultType.wildcardFile, ResultType.yamlWildcard, ResultType.umiWildcard].includes(result.type))
@@ -718,6 +719,13 @@ async function insertTextAtCursor(textArea, result, tagword, tabCompletedWithout
     if (tagType === ResultType.wildcardTag || tagType === ResultType.wildcardFile || tagType === ResultType.yamlWildcard)
         tacSelfTrigger = true;
     updateInput(textArea);
+
+    // Gradio may reset the caret to the end of the textbox after updateInput,
+    // so restore the intended cursor position on the next frame (and again
+    // shortly after, in case the reset happens asynchronously).
+    const restoreCaret = () => textArea.setSelectionRange(finalCursorPos, finalCursorPos);
+    requestAnimationFrame(restoreCaret);
+    setTimeout(restoreCaret, 0);
 
     // Update previous tags with the edited prompt to prevent re-searching the same term
     let weightedTags = [...newPrompt.matchAll(WEIGHT_REGEX)]
