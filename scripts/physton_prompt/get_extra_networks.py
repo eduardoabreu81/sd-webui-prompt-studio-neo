@@ -1,9 +1,11 @@
 # -*- coding: UTF-8 -*-
 
-from modules import script_callbacks, extra_networks, prompt_parser, shared, ui_extra_networks
 import json
 import os
 import copy
+
+from modules import ui_extra_networks
+from scripts.model_metadata_service import read_model_display_info
 
 filters = [
     # 'filename',
@@ -36,34 +38,17 @@ def get_extra_networks():
                     pass
                 item['output_name'] = output_name
 
-                # 获取civitai.info
+                # Read optional Browser Neo artifacts and independent
+                # .civitai.info through the shared, read-only metadata backend.
                 item['civitai_info'] = {}
                 try:
                     if 'filename' in item and item['filename']:
                         item['basename'] = os.path.basename(item['filename'])
                         item['dirname'] = os.path.dirname(item['filename'])
-                        base, ext = os.path.splitext(item['filename'])
-                        info_file = base + '.civitai.info'
-                        if not os.path.isfile(info_file):
-                            info_file = item['filename'] + '.civitai.info'
-                        if os.path.isfile(info_file):
-                            with open(info_file, 'r') as f:
-                                info = json.load(f)
-                                images = info.get('images', [])
-                                info = {
-                                    'modelId': info.get('modelId', ''),
-                                    'name': info.get('name', ''),
-                                    'description': info.get('description', ''),
-                                    'baseModel': info.get('baseModel', ''),
-                                    'model': info.get('model', {}),
-                                    'trainedWords': info.get('trainedWords', []),
-                                    'images': [],
-                                }
-                                if images and len(images) > 0:
-                                    for image in images:
-                                        info['images'].append(image['url'])
-                                item['civitai_info'] = info
-                except Exception as e:
+                        info = read_model_display_info(item['filename'])
+                        if info.get('sources'):
+                            item['civitai_info'] = info
+                except Exception:
                     pass
 
                 # 过滤掉不需要的字段

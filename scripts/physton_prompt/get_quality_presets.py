@@ -1,8 +1,10 @@
 import os
-import json
-import struct
-import requests
 
+from scripts.model_metadata_service import (
+    get_current_checkpoint_path,
+    resolve_model_metadata,
+    seed_model_metadata,
+)
 from scripts.physton_prompt.storage import Storage
 
 # ---------------------------------------------------------------------------
@@ -16,27 +18,18 @@ def _default_builtin_enabled() -> dict:
     return {k: True for k in BUILTIN_TEMPLATES}
 
 DEFAULT_PRESETS = {
-    # NOTE: CivitAI API key is stored in WebUI settings (shared.opts.paio_neo_civitai_api_key),
-    # not here. Use _get_civitai_api_key() to retrieve it at runtime.
+    # NOTE: CivitAI API key is stored in WebUI settings and resolved by the
+    # shared model metadata service.
     # builtin_enabled: per-family toggle (True = use this family's template by default)
     # Populated at runtime from BUILTIN_TEMPLATES keys; missing keys default to True.
     'builtin_enabled': {},
     # builtin_overrides: user-edited tags per family (values follow same schema as BUILTIN_TEMPLATES)
     'builtin_overrides': {},
-    # checkpoint_cache: SHA-256 → {base_model, filename, scanned_at}
-    # Persisted so repeated opens never call the API twice for the same file.
+    # Legacy PAIO cache, retained only so the shared service can migrate older
+    # installations lazily. New metadata is stored in model_metadata_cache.json.
     'checkpoint_cache': {},
     'presets': [],
 }
-
-
-def _get_civitai_api_key() -> str:
-    """Read the CivitAI API key from WebUI settings (Settings → Prompt All-in-One Neo)."""
-    try:
-        from modules import shared
-        return getattr(shared.opts, 'paio_neo_civitai_api_key', '') or ''
-    except Exception:
-        return ''
 
 # ---------------------------------------------------------------------------
 # Built-in template mapping  CivitAI baseModel  →  quality tag blocks
@@ -161,93 +154,18 @@ def detect_family_by_filename(filename_stem: str) -> str:
     return ''
 
 # ---------------------------------------------------------------------------
-# Helpers: read SHA-256 from a safetensors file
+# Shared metadata backend compatibility wrapper
 # ---------------------------------------------------------------------------
 
-def _read_safetensors_header(filepath: str) -> dict:
-    """Return the parsed JSON header of a safetensors file, or {}."""
-    try:
-        with open(filepath, 'rb') as f:
-            length_bytes = f.read(8)
-            if len(length_bytes) < 8:
-                return {}
-            header_length = struct.unpack('<Q', length_bytes)[0]
-            if header_length > 100 * 1024 * 1024:   # sanity: > 100 MB is wrong
-                return {}
-            header_bytes = f.read(header_length)
-            return json.loads(header_bytes.decode('utf-8'))
-    except Exception:
-        return {}
-
-
-def get_sha256_from_file(filepath: str) -> str:
-    """
-    Try to obtain the SHA-256 hash for a checkpoint file.
-    Priority:
-      1. modelspec.hash_sha256 inside safetensors __metadata__
-      2. .sha256 sidecar file (written by Forge / A1111 after first load)
-    Returns uppercase hex string or '' if unavailable.
-    """
-    # 1. safetensors metadata
-    if filepath.lower().endswith('.safetensors'):
-        header = _read_safetensors_header(filepath)
-        meta = header.get('__metadata__', {})
-        sha = meta.get('modelspec.hash_sha256', '')
-        if sha:
-            return sha.upper().strip()
-
-    # 2. sidecar .sha256 file
-    sidecar = os.path.splitext(filepath)[0] + '.sha256'
-    if os.path.exists(sidecar):
-        try:
-            return open(sidecar).read().strip().upper()
-        except Exception:
-            pass
-
-    return ''
-
-
-# ---------------------------------------------------------------------------
-# CivitAI API lookup
-# ---------------------------------------------------------------------------
-
-def _civitai_headers(api_key: str = '') -> dict:
-    """
-    Build request headers for CivitAI API calls.
-    Uses a browser-style User-Agent to bypass Cloudflare (error 1010).
-    Based on the pattern from sd-civitai-browser-neo/scripts/civitai_api.py.
-    """
-    headers = {
-        'Connection': 'keep-alive',
-        'User-Agent': (
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) '
-            'Chrome/121.0.0.0 Safari/537.36'
-        ),
-        'Content-Type': 'application/json',
-    }
-    if api_key:
-        headers['Authorization'] = f'Bearer {api_key}'
-    return headers
-
-
-def fetch_base_model_from_civitai(sha256: str, api_key: str = '') -> str:
-    """
-    Query CivitAI /api/v1/model-versions/by-hash/{sha256}.
-    Returns the raw baseModel string (e.g. 'NoobAI', 'Pony') or '' on failure.
-    """
-    if not sha256 or len(sha256) != 64:
-        return ''
-    url = f'https://civitai.com/api/v1/model-versions/by-hash/{sha256}'
-    try:
-        resp = requests.get(url, headers=_civitai_headers(api_key), timeout=(15, 30))
-        if resp.status_code == 200:
-            data = resp.json()
-            if 'error' not in data:
-                return data.get('baseModel', '')
-    except Exception:
-        pass
-    return ''
+def get_sha256_from_file(filepath: str, calculate: bool = False) -> str:
+    """Return the shared resolver's SHA-256 value for a checkpoint."""
+    metadata = resolve_model_metadata(
+        filepath,
+        model_type='checkpoint',
+        allow_network=False,
+        calculate_hash=calculate,
+    )
+    return metadata.get('sha256', '')
 
 
 # ---------------------------------------------------------------------------
@@ -295,7 +213,7 @@ def detect_preset_for_checkpoint(filepath: str) -> dict:
         }
 
     Detection order:
-      1. SHA-256  →  CivitAI by-hash  →  built-in template
+      1. Shared metadata cache/sidecars, then CivitAI by-hash → built-in template
       2. Filename substring  →  user preset match_substr
       3. No match → source='none', empty tag lists
     """
@@ -317,7 +235,6 @@ def detect_preset_for_checkpoint(filepath: str) -> dict:
 
     storage = load_presets()
     user_presets = storage.get('presets', [])
-    api_key = _get_civitai_api_key()
 
     # -- Step 1a: exact filename match in user presets ----------------------
     for preset in user_presets:
@@ -334,11 +251,38 @@ def detect_preset_for_checkpoint(filepath: str) -> dict:
             })
             return result
 
-    # -- Step 1b: CivitAI SHA-256 lookup ------------------------------------
-    sha256 = get_sha256_from_file(filepath)
-    base_model = ''
-    if sha256:
-        base_model = fetch_base_model_from_civitai(sha256, api_key)
+    # -- Step 1b: shared metadata lookup -------------------------------------
+    metadata = resolve_model_metadata(
+        filepath,
+        model_type='checkpoint',
+        allow_network=False,
+        calculate_hash=False,
+    )
+
+    # Import the previous PAIO cache lazily so existing users do not lose a
+    # completed checkpoint scan during the backend migration.
+    sha256 = metadata.get('sha256', '')
+    legacy_cached = storage.get('checkpoint_cache', {}).get(sha256, {}) if sha256 else {}
+    if not metadata.get('base_model') and legacy_cached.get('base_model'):
+        metadata = seed_model_metadata(
+            filepath,
+            {
+                'sha256': sha256,
+                'base_model': legacy_cached.get('base_model', ''),
+            },
+            model_type='checkpoint',
+        )
+
+    if not metadata.get('base_model'):
+        metadata = resolve_model_metadata(
+            filepath,
+            model_type='checkpoint',
+            required_fields=('base_model',),
+            allow_network=True,
+            calculate_hash=True,
+        )
+
+    base_model = metadata.get('base_model', '')
 
     if base_model:
         result['base_model'] = base_model
@@ -419,14 +363,14 @@ def get_installed_checkpoints() -> list:
                 'filename':   str,   # basename with extension
                 'filepath':   str,   # absolute path
                 'title':      str,   # display name (model title or filename stem)
-                'sha256':     str,   # from sidecar/.safetensors meta, or ''
-                'base_model': str,   # from checkpoint_cache (already scanned), or ''
+                'sha256':     str,   # from shared metadata sources, or ''
+                'base_model': str,   # from shared metadata sources, or ''
             },
             ...
         ]
     """
     storage = load_presets()
-    cache = storage.get('checkpoint_cache', {})
+    legacy_cache = storage.get('checkpoint_cache', {})
 
     checkpoints = []
     try:
@@ -435,14 +379,29 @@ def get_installed_checkpoints() -> list:
             filepath = getattr(info, 'filename', '')
             filename = os.path.basename(filepath)
             title    = getattr(info, 'title', '') or os.path.splitext(filename)[0]
-            sha256   = get_sha256_from_file(filepath) if filepath else ''
-            cached   = cache.get(sha256, {}) if sha256 else {}
+            metadata = resolve_model_metadata(
+                filepath,
+                model_type='checkpoint',
+                allow_network=False,
+                calculate_hash=False,
+            ) if filepath else {}
+            sha256 = metadata.get('sha256', '')
+            legacy_cached = legacy_cache.get(sha256, {}) if sha256 else {}
+            if not metadata.get('base_model') and legacy_cached.get('base_model'):
+                metadata = seed_model_metadata(
+                    filepath,
+                    {
+                        'sha256': sha256,
+                        'base_model': legacy_cached.get('base_model', ''),
+                    },
+                    model_type='checkpoint',
+                )
             checkpoints.append({
                 'filename':   filename,
                 'filepath':   filepath,
                 'title':      title,
                 'sha256':     sha256,
-                'base_model': cached.get('base_model', ''),
+                'base_model': metadata.get('base_model', ''),
             })
     except Exception:
         pass
@@ -451,52 +410,20 @@ def get_installed_checkpoints() -> list:
 
 def scan_checkpoint(filepath: str) -> dict:
     """
-    Query CivitAI for a single checkpoint and update checkpoint_cache.
+    Resolve a checkpoint through shared metadata sources and, if necessary,
+    CivitAI. Only Prompt Studio's own metadata cache is updated.
     Returns {'filename', 'sha256', 'base_model'} — empty strings on failure.
     """
-    storage = load_presets()
-    api_key = _get_civitai_api_key()
-
-    sha256 = get_sha256_from_file(filepath)
-    if not sha256:
-        return {'filename': os.path.basename(filepath), 'sha256': '', 'base_model': ''}
-
-    base_model = fetch_base_model_from_civitai(sha256, api_key)
-
-    import time
-    cache = storage.get('checkpoint_cache', {})
-    cache[sha256] = {
-        'base_model':  base_model,
-        'filename':    os.path.basename(filepath),
-        'scanned_at':  int(time.time()),
-    }
-    storage['checkpoint_cache'] = cache
-    save_presets(storage)
+    metadata = resolve_model_metadata(
+        filepath,
+        model_type='checkpoint',
+        required_fields=('base_model',),
+        allow_network=True,
+        calculate_hash=True,
+    )
 
     return {
         'filename':   os.path.basename(filepath),
-        'sha256':     sha256,
-        'base_model': base_model,
+        'sha256':     metadata.get('sha256', ''),
+        'base_model': metadata.get('base_model', ''),
     }
-
-
-# ---------------------------------------------------------------------------
-# WebUI integration: resolve the currently loaded checkpoint path
-# ---------------------------------------------------------------------------
-
-def get_current_checkpoint_path() -> str:
-    """
-    Return the absolute path to the currently loaded checkpoint, or ''.
-    Works with Forge Neo / A1111 / SD.Next.
-    """
-    try:
-        from modules import shared, sd_models
-        name = getattr(shared.opts, 'sd_model_checkpoint', '')
-        if not name:
-            return ''
-        info = sd_models.get_closet_checkpoint_match(name)
-        if info and hasattr(info, 'filename'):
-            return info.filename
-    except Exception:
-        pass
-    return ''

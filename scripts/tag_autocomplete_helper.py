@@ -10,8 +10,6 @@ import urllib.parse
 from asyncio import sleep
 from pathlib import Path
 
-import requests
-
 import gradio as gr
 import yaml
 from fastapi import FastAPI
@@ -19,10 +17,45 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from modules import hashes, script_callbacks, sd_models, shared
 from pydantic import BaseModel
 
-from scripts.model_keyword_support import (get_lora_simple_hash,
-                                           load_hash_cache, update_hash_cache,
-                                           write_model_keyword_path)
-from scripts.shared_paths import *
+try:
+    from scripts.model_keyword_support import (get_lora_simple_hash,
+                                               load_hash_cache, update_hash_cache,
+                                               write_model_keyword_path)
+    from scripts.model_catalog_service import (
+        MODEL_EXTENSIONS,
+        PREVIEW_EXTENSIONS,
+        ModelCatalogEntry,
+        find_companion_file,
+        model_file_catalog,
+    )
+    from scripts.model_metadata_service import (
+        preferred_network_name,
+        resolve_model_metadata,
+        resolve_current_checkpoint_metadata,
+        trigger_words_text,
+    )
+    from scripts.shared_paths import *
+except ModuleNotFoundError:
+    # Forge Neo can expose extension scripts as sibling modules instead of a
+    # conventional package, depending on extension load order.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from model_keyword_support import (get_lora_simple_hash,
+                                       load_hash_cache, update_hash_cache,
+                                       write_model_keyword_path)
+    from model_catalog_service import (
+        MODEL_EXTENSIONS,
+        PREVIEW_EXTENSIONS,
+        ModelCatalogEntry,
+        find_companion_file,
+        model_file_catalog,
+    )
+    from model_metadata_service import (
+        preferred_network_name,
+        resolve_model_metadata,
+        resolve_current_checkpoint_metadata,
+        trigger_words_text,
+    )
+    from shared_paths import *
 
 try:
     try:
@@ -149,17 +182,23 @@ def parse_umi_format(umi_tags, data):
         count += 1
 
 
-def parse_dynamic_prompt_format(yaml_wildcards, data, path):
+def parse_dynamic_prompt_format(yaml_wildcards, data, path, root):
     # Recurse subkeys, delete those without string lists as values
     def recurse_dict(d: dict):
         for key, value in d.copy().items():
             if isinstance(value, dict):
                 recurse_dict(value)
-            elif not (isinstance(value, list) and all(isinstance(v, str) for v in value)):
+            elif (
+                not isinstance(value, str)
+                and not (isinstance(value, list) and all(isinstance(v, str) for v in value))
+            ):
                 del d[key]
 
     try:
         recurse_dict(data)
+        # Preserve nested Dynamic Prompts folders in the YAML completion tree.
+        for part in reversed(path.relative_to(root).parent.parts):
+            data = {part: data}
         # Add to yaml_wildcards
         yaml_wildcards[path.name] = data
     except:
@@ -170,14 +209,14 @@ def get_yaml_wildcards():
     """Returns a list of all tags found in extension YAML files found under a Tags: key."""
     yaml_files = []
     for path in WILDCARD_EXT_PATHS:
-        yaml_files.extend(p for p in path.rglob("*.yml") if p.is_file())
-        yaml_files.extend(p for p in path.rglob("*.yaml") if p.is_file())
+        yaml_files.extend((p, path) for p in path.rglob("*.yml") if p.is_file())
+        yaml_files.extend((p, path) for p in path.rglob("*.yaml") if p.is_file())
 
     yaml_wildcards = {}
 
     umi_tags = {} # { tag: count }
 
-    for path in yaml_files:
+    for path, root in yaml_files:
         try:
             with open(path, encoding="utf8") as file:
                 data = yaml.safe_load(file)
@@ -185,7 +224,7 @@ def get_yaml_wildcards():
                     if (is_umi_format(data)):
                         parse_umi_format(umi_tags, data)
                     else:
-                        parse_dynamic_prompt_format(yaml_wildcards, data, path)
+                        parse_dynamic_prompt_format(yaml_wildcards, data, path, root)
                 else:
                     print('[Tag Autocomplete Neo] No data found in ' + path.name)
         except (yaml.YAMLError, UnicodeDecodeError, AttributeError, TypeError) as e:
@@ -291,93 +330,101 @@ def get_embeddings(sd_model):
 model_keyword_installed = write_model_keyword_path()
 
 
-def _read_safetensors_alias(path: Path):
-    """Read ss_output_name from a safetensors header without loading tensors.
-
-    Returns the value as a string, or None if not present or on any error.
-    Only reads the compact metadata header (first ~8 KB in practice), so it is fast.
-    """
-    try:
-        import struct
-        import json as _json
-        with open(path, "rb") as f:
-            raw = f.read(8)
-            if len(raw) < 8:
-                return None
-            length = struct.unpack("<Q", raw)[0]
-            header = _json.loads(f.read(length))
-            value = header.get("__metadata__", {}).get("ss_output_name", None)
-            return value if value else None
-    except Exception:
-        return None
-
-
 # Try to import the built-in Lora module for alias resolution.
 # When available, model.get_alias() respects the user's "lora_preferred_name"
 # setting ("Alias from file" = ss_output_name, "Filename" = filename stem).
-# We keep a reference to the module rather than overriding _get_lora/_get_lyco
-# so that filesystem scanning always runs — lora.available_loras is empty until
-# a model is first loaded (Forge Neo loads on demand), which would cause lora.txt
-# to be written as empty on startup.
+# Its refresh function also owns the authoritative filesystem scan. A local
+# fallback is used only when this host module is missing or returns no entries.
 _lora_module = None
 try:
     import sys
     from modules import extensions
-    sys.path.append(Path(extensions.extensions_builtin_dir).joinpath("Lora").as_posix())
+    for builtin_name in ("Lora", "sd_forge_lora"):
+        builtin_path = Path(extensions.extensions_builtin_dir).joinpath(builtin_name)
+        if builtin_path.is_dir() and builtin_path.as_posix() not in sys.path:
+            sys.path.append(builtin_path.as_posix())
     import lora as _lora_module  # pyright: ignore [reportMissingImports]
 except Exception:
     pass
 
 
-def _build_alias_map(base_path: Path) -> dict:
-    """Build an {absolute_path: alias} map from lora.available_loras.
-    Returns an empty dict when the module is unavailable or no model has been
-    loaded yet (available_loras is still empty at startup)."""
-    if _lora_module is None:
-        return {}
+def _native_network_entries(base_path: Path | None) -> list[ModelCatalogEntry]:
+    """Return Forge's authoritative LoRA catalog for ``base_path``."""
+    if _lora_module is None or base_path is None:
+        return []
     try:
-        return {
-            Path(model.filename).absolute(): model.get_alias()
+        # Forge performs the filesystem walk, reads safetensors metadata and
+        # detects duplicate/forbidden aliases in this single refresh.
+        refresh = getattr(_lora_module, "list_available_loras", None)
+        if callable(refresh):
+            refresh()
+        return [
+            ModelCatalogEntry(
+                path=Path(model.filename),
+                alias=model.get_alias(),
+                network_hash=getattr(model, "hash", "") or "",
+            )
             for model in _lora_module.available_loras.values()
-            if Path(model.filename).absolute().is_relative_to(base_path)
-        }
+        ]
     except Exception:
-        return {}
+        return []
+
+
+def _fallback_network_entries(base_path: Path | None) -> list[ModelCatalogEntry]:
+    """Compatibility discovery when the host does not expose a LoRA catalog."""
+    if base_path is None or not base_path.exists():
+        return []
+    return [
+        ModelCatalogEntry(path=path)
+        for path in sorted(base_path.rglob("*"))
+        if path.suffix.casefold() in MODEL_EXTENSIONS and path.is_file()
+    ]
+
+
+def _discover_networks(model_type: str, base_path: Path | None) -> tuple[ModelCatalogEntry, ...]:
+    if base_path is None:
+        model_file_catalog.clear(model_type)
+        return ()
+    entries = _native_network_entries(base_path) or _fallback_network_entries(base_path)
+    return model_file_catalog.replace(model_type, base_path, entries)
+
+
+def _forbidden_lora_aliases() -> set[str]:
+    if _lora_module is None:
+        return {"none", "addams"}
+    try:
+        return set(getattr(_lora_module, "forbidden_lora_aliases", set()))
+    except Exception:
+        return {"none", "addams"}
 
 
 def _get_lora():
-    """Returns a list of (path, alias_or_None) tuples for all LoRA files.
-    Always uses a filesystem scan so files appear even before a model is loaded.
-    When lora.available_loras is populated the alias already respects the user's
-    'lora_preferred_name' setting; otherwise None is returned and get_lora()
-    resolves via safetensors header or filename stem."""
-    alias_map = _build_alias_map(LORA_PATH)
-    lora_paths = [
-        Path(l)
-        for l in glob.glob(LORA_PATH.joinpath("**/*").as_posix(), recursive=True)
-    ]
-    valid_loras = [
-        lf
-        for lf in lora_paths
-        if lf.suffix in {".safetensors", ".ckpt", ".pt"} and lf.is_file()
-    ]
-    return [(lf, alias_map.get(lf.absolute())) for lf in valid_loras]
+    """Publish and return the Forge LoRA catalog, with a filesystem fallback."""
+    entries = _discover_networks("lora", LORA_PATH)
+    if LYCO_PATH is not None and LORA_PATH is not None and LYCO_PATH.absolute() == LORA_PATH.absolute():
+        model_file_catalog.replace("lyco", LYCO_PATH, entries)
+    return entries
 
 
 def _get_lyco():
-    """Returns a list of (path, alias_or_None) tuples for all LyCORIS files.
-    Same strategy as _get_lora()."""
-    alias_map = _build_alias_map(LYCO_PATH)
-    lyco_paths = [
-        Path(ly)
-        for ly in glob.glob(LYCO_PATH.joinpath("**/*").as_posix(), recursive=True)
-    ]
-    valid_lycos = [
-        lyf
-        for lyf in lyco_paths
-        if lyf.suffix in {".safetensors", ".ckpt", ".pt"} and lyf.is_file()
-    ]
-    return [(lyf, alias_map.get(lyf.absolute())) for lyf in valid_lycos]
+    """Publish and return a separate legacy LyCORIS catalog when configured."""
+    return _discover_networks("lyco", LYCO_PATH)
+
+
+def _resolve_network_entry(model_type: str, identifier: str) -> ModelCatalogEntry | None:
+    """Resolve from the published catalog, refreshing it once on a miss."""
+    entry = model_file_catalog.find(model_type, identifier)
+    if entry is not None:
+        return entry
+
+    if model_type == "lora":
+        _get_lora()
+    elif model_type == "lyco":
+        if LYCO_PATH is not None and LORA_PATH is not None and LYCO_PATH.absolute() == LORA_PATH.absolute():
+            _get_lora()
+        else:
+            _get_lyco()
+    return model_file_catalog.find(model_type, identifier)
 
 
 def is_visible(p: Path) -> bool:
@@ -401,25 +448,23 @@ def get_lora():
     sorter = sort_criteria.get(sort_method, sort_criteria["Name"])
 
     results = []
-    for l, provided_alias in valid_loras:
+    for entry in valid_loras:
+        l = entry.path
+        provided_alias = entry.alias
         if not l.exists() or not l.is_file() or not is_visible(l):
             continue
-        name = l.relative_to(LORA_PATH).as_posix()
+        try:
+            name = l.relative_to(LORA_PATH).as_posix()
+        except ValueError:
+            # Forge may expose additional --lora-dirs outside the primary root.
+            name = l.name
         hash_val = get_lora_simple_hash(l) if model_keyword_installed else ""
 
-        # Determine the alias to use for prompt insertion.
-        # Priority:
-        #   1. Value from lora.available_loras.get_alias() — already respects
-        #      the "lora_preferred_name" setting ("Alias from file" / "Filename").
-        #   2. ss_output_name from the safetensors header (fallback when the
-        #      built-in lora module is not importable).
-        #   3. Filename stem (last-resort fallback).
-        if provided_alias is not None:
-            alias = provided_alias
-        elif l.suffix == ".safetensors":
-            alias = _read_safetensors_alias(l) or l.stem
-        else:
-            alias = l.stem
+        alias = preferred_network_name(
+            l,
+            provided_alias,
+            forbidden_aliases=_forbidden_lora_aliases(),
+        )
 
         sort_key = sorter(l, name, True)
         results.append(f'"{name}","{sort_key}",{hash_val},"{alias}"')
@@ -438,18 +483,22 @@ def get_lyco():
     sorter = sort_criteria.get(sort_method, sort_criteria["Name"])
 
     results = []
-    for ly, provided_alias in valid_lycos:
+    for entry in valid_lycos:
+        ly = entry.path
+        provided_alias = entry.alias
         if not ly.exists() or not ly.is_file() or not is_visible(ly):
             continue
-        name = ly.relative_to(LYCO_PATH).as_posix()
+        try:
+            name = ly.relative_to(LYCO_PATH).as_posix()
+        except ValueError:
+            name = ly.name
         hash_val = get_lora_simple_hash(ly) if model_keyword_installed else ""
 
-        if provided_alias is not None:
-            alias = provided_alias
-        elif ly.suffix == ".safetensors":
-            alias = _read_safetensors_alias(ly) or ly.stem
-        else:
-            alias = ly.stem
+        alias = preferred_network_name(
+            ly,
+            provided_alias,
+            forbidden_aliases=_forbidden_lora_aliases(),
+        )
 
         sort_key = sorter(ly, name, True)
         results.append(f'"{name}","{sort_key}",{hash_val},"{alias}"')
@@ -664,10 +713,13 @@ def on_ui_settings():
         "tac_appendComma": shared.OptionInfo(True, "Append comma on tag autocompletion"),
         "tac_appendSpace": shared.OptionInfo(True, "Append space on tag autocompletion").info("will append after comma if the above is enabled"),
         "tac_alwaysSpaceAtEnd": shared.OptionInfo(True, "Always append space if inserting at the end of the textbox").info("takes precedence over the regular space setting for that position"),
-        "tac_modelKeywordCompletion": shared.OptionInfo("Never", "Try to add known trigger words for LORA/LyCO models", gr.Dropdown, lambda: {"choices": ["Never","Only user list","Always"]}).info("Uses the native 'activation text' field from the .json sidecar first. Enable 'Fetch from CivitAI' below to auto-populate from the API.").needs_restart(),
+        "tac_modelKeywordCompletion": shared.OptionInfo("Never", "Try to add known trigger words for LORA/LyCO models", gr.Dropdown, lambda: {"choices": ["Never","Only user list","Always"]}).info("Uses Browser Neo metadata read-only when available, then Prompt Studio's own metadata cache.").needs_restart(),
         "tac_modelKeywordLocation": shared.OptionInfo("Start of prompt", "Where to insert the trigger keyword", gr.Dropdown, lambda: {"choices": ["Start of prompt","End of prompt","Before LORA/LyCO","After LORA/LyCO"]}).info("Only relevant if the above option is enabled"),
-        "tac_modelKeywordCivitai": shared.OptionInfo(False, "Fetch trigger words from CivitAI if not found in local .json").info("Calls GET /api/v1/model-versions/by-hash/{sha256} — result cached in .json sidecar, re-fetched only when the file changes"),
-        "tac_civitaiApiKey": shared.OptionInfo("", "CivitAI API key for trigger word lookups").info("Required for early-access models. Leave blank for public models. Get your key at civitai.com/user/account"),
+        "tac_modelKeywordCivitai": shared.OptionInfo(False, "Fetch trigger words from CivitAI when metadata is unavailable").info("Results are stored in Prompt Studio's internal cache; model sidecars are never modified."),
+        "tac_civitaiApiKey": shared.OptionInfo("", "Legacy CivitAI API key for trigger word lookups").info("Kept as a migration fallback. The Prompt All-in-One Neo CivitAI key is preferred."),
+        "tac_artistAtTrigger": shared.OptionInfo(False, "Show Artist tags when typing '@'").info("Filters completions to Artist tags from the loaded tag set."),
+        "tac_artistInsertAt": shared.OptionInfo(False, "Always add '@' before inserted Artist tags").info("Applies to all Artist tags, independently of the loaded checkpoint."),
+        "tac_animaArtistPrefix": shared.OptionInfo("Off", "Auto-prefix Danbooru Artist tags with '@' for Anima checkpoints", gr.Dropdown, lambda: {"choices": ["Off", "Auto"]}).info("Uses Browser Neo metadata when available, then Prompt Studio's own cache/CivitAI lookup."),
         "tac_wildcardCompletionMode": shared.OptionInfo("To next folder level", "How to complete nested wildcard paths", gr.Dropdown, lambda: {"choices": ["To next folder level","To first difference","Always fully"]}).info("e.g. \"hair/colours/light/...\""),
         # Alias settings
         "tac_alias.searchByAlias": shared.OptionInfo(True, "Search by alias"),
@@ -796,31 +848,52 @@ def api_tac(_: gr.Blocks, app: FastAPI):
     except Exception:
         pass
 
-    async def get_json_info(base_path: Path, filename: str = None):
-        if base_path is None or (not base_path.exists()):
+    async def get_json_info(model_type: str, filename: str = None):
+        entry = _resolve_network_entry(model_type, filename)
+        if entry is None:
             return Response(status_code=404)
 
         try:
-            json_candidates = glob.glob(base_path.as_posix() + f"/**/{glob.escape(filename)}.json", recursive=True)
-            if json_candidates is not None and len(json_candidates) > 0 and Path(json_candidates[0]).is_file():
-                return FileResponse(json_candidates[0])
+            info_path = find_companion_file(entry.path, (".json",))
+            if info_path is not None:
+                return FileResponse(info_path)
         except Exception as e:
-            return JSONResponse({"error": e}, status_code=500)
+            return JSONResponse({"error": str(e)}, status_code=500)
+        return Response(status_code=404)
 
-    async def get_preview_thumbnail(base_path: Path, filename: str = None, blob: bool = False):
-        if base_path is None or (not base_path.exists()):
-            return Response(status_code=404)
-
+    async def get_preview_thumbnail(model_type: str, filename: str = None, blob: bool = False):
         try:
-            img_glob = glob.glob(base_path.as_posix() + f"/**/{glob.escape(filename)}.*", recursive=True)
-            img_candidates = [img for img in img_glob if Path(img).suffix in [".png", ".jpg", ".jpeg", ".webp", ".gif"] and Path(img).is_file()]
-            if img_candidates is not None and len(img_candidates) > 0:
+            image_path = None
+            if model_type in {"lora", "lyco"}:
+                entry = _resolve_network_entry(model_type, filename)
+                if entry is not None:
+                    image_path = find_companion_file(entry.path, PREVIEW_EXTENSIONS)
+            else:
+                # Embeddings do not have a stable Forge catalog until a model is
+                # loaded, so retain a compatibility lookup for that type only.
+                base_path = get_path_for_type(model_type)
+                if base_path is not None and base_path.exists():
+                    img_glob = glob.glob(
+                        base_path.as_posix() + f"/**/{glob.escape(filename)}.*",
+                        recursive=True,
+                    )
+                    image_path = next(
+                        (
+                            Path(image)
+                            for image in img_glob
+                            if Path(image).suffix.casefold() in {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+                            and Path(image).is_file()
+                        ),
+                        None,
+                    )
+
+            if image_path is not None:
                 if blob:
-                    return FileResponse(img_candidates[0])
-                else:
-                    return JSONResponse({"url": urllib.parse.quote(img_candidates[0])})
+                    return FileResponse(image_path)
+                return JSONResponse({"url": urllib.parse.quote(str(image_path))})
         except Exception as e:
-            return JSONResponse({"error": e}, status_code=500)
+            return JSONResponse({"error": str(e)}, status_code=500)
+        return Response(status_code=404)
 
     @app.post("/tacapi/v1/refresh-temp-files")
     async def api_refresh_temp_files():
@@ -833,106 +906,74 @@ def api_tac(_: gr.Blocks, app: FastAPI):
 
     @app.get("/tacapi/v1/lora-info/{lora_name}")
     async def get_lora_info(lora_name):
-        return await get_json_info(LORA_PATH, lora_name)
+        return await get_json_info("lora", lora_name)
 
     @app.get("/tacapi/v1/lyco-info/{lyco_name}")
     async def get_lyco_info(lyco_name):
-        return await get_json_info(LYCO_PATH, lyco_name)
+        return await get_json_info("lyco", lyco_name)
 
     @app.get("/tacapi/v1/civitai-trigger-words/{lora_name}")
     async def get_civitai_trigger_words(lora_name: str):
         """Look up trigger words for a LoRA from CivitAI by-hash API.
 
         Priority:
-          1. Return cached result from .json sidecar if sha256 matches.
-          2. Call CivitAI GET /api/v1/model-versions/by-hash/{sha256}.
-          3. Save trainedWords to .json sidecar for future cache hits.
+          1. Reuse Browser Neo metadata read-only when available.
+          2. Return Prompt Studio's own cached result when valid.
+          3. Call CivitAI and persist only to Prompt Studio's internal cache.
         """
         if LORA_PATH is None or not LORA_PATH.exists():
             return Response(status_code=404)
 
-        # Locate the LoRA file
-        path_glob = glob.glob(
-            LORA_PATH.as_posix() + f"/**/{glob.escape(lora_name)}.*", recursive=True
-        )
-        paths = [
-            p for p in path_glob
-            if Path(p).suffix in {".safetensors", ".ckpt", ".pt"} and Path(p).is_file()
-        ]
-        if not paths:
+        entry = _resolve_network_entry("lora", lora_name)
+        if entry is None:
             return Response(status_code=404)
-
-        lora_path = Path(paths[0])
-        json_path = lora_path.with_suffix(".json")
-
-        # Compute SHA256 (uses Forge's cache, fast on repeat calls)
-        sha256 = hashes.sha256_from_cache(
-            str(lora_path), f"lora/{lora_name}", lora_path.suffix == ".safetensors"
-        )
-        if not sha256:
-            return Response(status_code=404)
-
-        sha256_upper = sha256.upper()
-
-        # Check sidecar cache
-        sidecar: dict = {}
-        if json_path.is_file():
-            try:
-                sidecar = json.loads(json_path.read_text(encoding="utf-8"))
-            except Exception:
-                sidecar = {}
-
-        if (
-            sidecar.get("civitai_sha256", "").upper() == sha256_upper
-            and "civitai_trained_words" in sidecar
-        ):
-            return JSONResponse({"trainedWords": sidecar["civitai_trained_words"]})
-
-        # Fetch from CivitAI
-        api_key = getattr(shared.opts, "tac_civitaiApiKey", "").strip()
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
 
         try:
-            response = requests.get(
-                f"https://civitai.com/api/v1/model-versions/by-hash/{sha256_upper}",
-                headers=headers,
-                timeout=(10, 20),
+            metadata = resolve_model_metadata(
+                entry.path,
+                model_type="lora",
+                required_fields=("trigger_words",),
+                allow_network=True,
+                calculate_hash=True,
             )
-            if response.status_code != 200:
-                return Response(status_code=response.status_code)
-            data = response.json()
-            if "error" in data:
+            trained_words = trigger_words_text(metadata)
+            if not trained_words:
                 return Response(status_code=404)
-
-            trained_words = data.get("trainedWords", [])
-            trained_str = ", ".join(trained_words) if trained_words else ""
-
-            # Persist to sidecar
-            sidecar["civitai_sha256"] = sha256_upper
-            sidecar["civitai_trained_words"] = trained_str
-            try:
-                json_path.write_text(
-                    json.dumps(sidecar, ensure_ascii=False, indent=2), encoding="utf-8"
-                )
-            except Exception as e:
-                print(f"[Tag Autocomplete Neo] Could not save civitai trigger words to sidecar: {e}")
-
-            return JSONResponse({"trainedWords": trained_str})
+            return JSONResponse({"trainedWords": trained_words})
         except Exception as e:
             print(f"[Tag Autocomplete Neo] CivitAI trigger word lookup failed: {e}")
             return Response(status_code=500)
 
+    @app.get("/tacapi/v1/current-checkpoint-basemodel")
+    async def get_current_checkpoint_basemodel():
+        """Return the selected checkpoint family through shared metadata."""
+        try:
+            metadata = resolve_current_checkpoint_metadata(
+                required_fields=("base_model",),
+                allow_network=True,
+            )
+            base_model = metadata.get("base_model", "")
+            if not base_model:
+                return Response(status_code=404)
+            return JSONResponse({"baseModel": base_model})
+        except Exception as e:
+            print(f"[Tag Autocomplete Neo] Checkpoint base model lookup failed: {e}")
+            return Response(status_code=500)
+
     @app.get("/tacapi/v1/lora-cached-hash/{lora_name}")
     async def get_lora_cached_hash(lora_name: str):
-        path_glob = glob.glob(LORA_PATH.as_posix() + f"/**/{glob.escape(lora_name)}.*", recursive=True)
-        paths = [lora for lora in path_glob if Path(lora).suffix in [".safetensors", ".ckpt", ".pt"] and Path(lora).is_file()]
-        if paths is not None and len(paths) > 0:
-            path = paths[0]
-            hash = hashes.sha256_from_cache(path, f"lora/{lora_name}", path.endswith(".safetensors"))
-            if hash is not None:
-                return hash
+        entry = _resolve_network_entry("lora", lora_name)
+        if entry is not None:
+            if entry.network_hash:
+                return entry.network_hash
+            path = str(entry.path)
+            cached_hash = hashes.sha256_from_cache(
+                path,
+                f"lora/{lora_name}",
+                path.endswith(".safetensors"),
+            )
+            if cached_hash is not None:
+                return cached_hash
         
         return None
 
@@ -948,11 +989,11 @@ def api_tac(_: gr.Blocks, app: FastAPI):
 
     @app.get("/tacapi/v1/thumb-preview/{filename}")
     async def get_thumb_preview(filename, type):
-        return await get_preview_thumbnail(get_path_for_type(type), filename, False)
+        return await get_preview_thumbnail(type, filename, False)
 
     @app.get("/tacapi/v1/thumb-preview-blob/{filename}")
     async def get_thumb_preview_blob(filename, type):
-        return await get_preview_thumbnail(get_path_for_type(type), filename, True)
+        return await get_preview_thumbnail(type, filename, True)
 
     @app.get("/tacapi/v1/wildcard-contents")
     async def get_wildcard_contents(basepath: str, filename: str):

@@ -424,6 +424,12 @@ def on_app_started(_: gr.Blocks, app: FastAPI):
         result['checkpoint_path'] = path
         return result
 
+    @app.get("/physton_prompt/current_checkpoint_path")
+    async def _current_checkpoint_path():
+        # The frontend polls only this lightweight value and resolves model
+        # metadata after the path actually changes.
+        return {"checkpoint_path": get_current_checkpoint_path()}
+
     @app.get("/physton_prompt/get_installed_checkpoints")
     async def _get_installed_checkpoints():
         return {"checkpoints": get_installed_checkpoints()}

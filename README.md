@@ -52,6 +52,10 @@
 - **Filename family detection** — checkpoints not found on CivitAI (local merges, unlisted models) are matched to a template family by filename token (`anima-base-v1.0` → Anima, without false-matching `animagine-xl`)
 - **📌 Pin tags per checkpoint** — pin suggested positive/negative tags to an exact checkpoint file, regardless of its model family (Pony, Flux, Illustrious, SDXL, …); pinned presets win over CivitAI detection
 - **Insert scaffold (Anima)** — one click replaces the prompt with the structured key-value skeleton (`tags:` / `char1:` / `background:`) that Anima's Qwen text encoder understands best
+- **Live Tag Colorizer** — optional read-only coloring in the four native prompt boxes, combining PAIO groups, TAC/Danbooru types, LoRAs, embeddings, wildcards, and the Anima `@artist` convention
+- **Artist autocomplete with `@`** — opt-in artist-only suggestions plus optional `@` insertion; Anima checkpoints can enable automatic artist prefixing
+- **Shared model metadata cache** — PAIO and TAC now reuse one CivitAI/SHA-256 backend; CivitAI Browser Neo metadata is consumed read-only when installed, but is never required
+- **Forge-native extra-network catalog** — LoRA paths, aliases and cached network hashes come from Forge Neo once per refresh; TAC API lookups reuse an in-memory index instead of rescanning model folders
 - **Autocomplete diagnostics** — when tag autocompletion is disabled via settings, the toolbar status dot turns gray and a clear warning is printed to the browser console and the Forge terminal
 
 ---
@@ -67,6 +71,10 @@
 - Added token-based filename family detection as a CivitAI fallback for Quality Presets
 - Added **📌 Pin tags** — per-checkpoint custom presets via exact filename match, pre-filled from the detected family template, editable, with optional auto-insert
 - Added **Insert scaffold** to the Anima template card — replaces the active tab's prompt with the structured skeleton and the official negative
+- Added the optional **Live Tag Colorizer** for the native Forge prompt boxes
+- Added `@` artist completion and optional Anima-aware artist prefixing
+- Unified checkpoint/LoRA CivitAI metadata behind Prompt Studio's own cache; Browser Neo sidecars are optional read-only inputs and inherited PAIO sidecar readers remain compatibility-only
+- Reused Forge Neo's native LoRA catalog across the PAIO/TAC backend and removed repeated per-request LoRA directory scans
 - Surfaced the disabled state of tag autocompletion (gray status dot, console warning, terminal warning)
 
 ---
@@ -80,10 +88,15 @@
 - 📌 Pin tags per checkpoint ✅
 - Insert scaffold for Anima ✅
 
-### v0.2 — Backend Unification *(planned)*
-- Single CivitAI client (one API key, one cache) shared by both engines
-- Single SHA-256 hash cache for checkpoints and LoRAs
-- Single extra-networks scan feeding both engines (faster startup)
+### v0.2 — Backend Unification *(implemented; remote validation pending)*
+- Single CivitAI client and Prompt Studio metadata cache shared by both engines ✅
+- Browser Neo integration as an optional, read-only metadata source ✅
+- Forge-aware LoRA Filename/Alias insertion ✅
+- Forge-owned extra-networks file catalog feeding both engines ✅
+
+### Backend follow-ups *(planned, non-blocking)*
+- Replace the embedding preview fallback scan when Forge Neo exposes a stable embedding catalog before model load
+- Evaluate wildcard indexing separately, preserving Dynamic Prompts paths and explicit refresh semantics
 
 ### v0.3 — Prompt Profiles & Anima Builder *(planned)*
 - Prompt Profiles: Classic (default) / Anima / Ideogram — grammar and defaults per model, never touching your data
@@ -138,6 +151,7 @@
 - **Indexed search** — built-in prefix index for near-instant filtering on large tag lists ⭐
 - **Keyboard navigation** — arrow keys, Tab, Enter, Escape, all configurable
 - **Tag color coding** by category, with post count for relevance
+- **Artist completion via `@`** — filters suggestions to Danbooru Artist tags; optional automatic `@` insertion for Anima ⭐
 - **Alias and translation search** — find tags by their alternate names or translated terms
 - **Frequency sorting** — remembers your most-used tags and promotes them to the top ⭐
 - **Multi-word tag search** — type any word of a multi-word tag (e.g. `towards` → `walking_towards_viewer`) ⭐
@@ -151,7 +165,7 @@
 - **LoRA / LyCORIS / Textual Inversion detection** — recognized chips highlighted with distinct colors, existence check, metadata popup with preview and trained keywords
 - **LoRA and LyCORIS autocomplete** triggered by `<`, embeddings by `<e:`, with thumbnail previews
 - **Correct alias insertion** — uses the identifier Forge Neo expects, so tokens never blink ⭐
-- **Trigger word injection** on LoRA selection — fetched from CivitAI when not set locally, cached by SHA-256, with configurable insertion position ⭐
+- **Trigger word injection** on LoRA selection — reuses optional Browser Neo metadata or Prompt Studio's own SHA-256 cache, with configurable insertion position; model sidecars are never modified ⭐
 
 ### 🤖 ChatGPT Integration
 

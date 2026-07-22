@@ -338,6 +338,17 @@ function updateModelName() {
     }
 }
 
+async function updateAnimaCheckpointStatus() {
+    if (!TAC_CFG || TAC_CFG.animaArtistPrefix === "Off") {
+        currentModelIsAnima = false;
+        return;
+    }
+    const data = await fetchTacAPI("tacapi/v1/current-checkpoint-basemodel", true, false);
+    currentModelIsAnima = !!(
+        data && data.baseModel && data.baseModel.toLowerCase().includes("anima")
+    );
+}
+
 // From https://stackoverflow.com/a/61975440, how to detect JS value changes
 function observeElement(element, property, callback, delay = 0) {
     let elementPrototype = Object.getPrototypeOf(element);

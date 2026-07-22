@@ -208,6 +208,10 @@ export default class GradioAPI {
         return (await this.api.get("/detect_model_preset", {params: {filepath}})).data
     }
 
+    async getCurrentCheckpointPath() {
+        return (await this.api.get("/current_checkpoint_path")).data.checkpoint_path
+    }
+
     async getInstalledCheckpoints() {
         return (await this.api.get("/get_installed_checkpoints")).data.checkpoints
     }

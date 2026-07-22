@@ -23,6 +23,8 @@ var styleNames = [];
 // Selected model info for black/whitelisting
 var currentModelHash = "";
 var currentModelName = "";
+// Shared checkpoint metadata controls optional Anima artist-tag behavior.
+var currentModelIsAnima = false;
 
 // Current results
 var results = [];

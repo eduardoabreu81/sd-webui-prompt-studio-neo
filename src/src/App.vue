@@ -377,6 +377,7 @@ export default {
             // Tracks the currently loaded checkpoint path so the auto-inject
             // watcher can detect when the user switches models (#v0.2.0).
             checkpointWatcherLastPath: '',
+            checkpointWatcherTimer: null,
         }
     },
     watch: {
@@ -1207,23 +1208,26 @@ export default {
         // Checkpoint auto-inject (v0.2.0)
         // ------------------------------------------------------------------
         /**
-         * Establish a baseline of the current checkpoint path, then poll
-         * every 3 s. When the path changes AND the resolved preset has
-         * auto_insert === true, prepend the quality tags into the active tab.
+         * Establish a baseline of the current checkpoint path, then poll only
+         * that lightweight value. Resolve metadata and presets once after a
+         * real model change, never on every 3-second tick.
          */
         startCheckpointWatcher() {
-            this.gradioAPI.detectModelPreset().then(result => {
-                this.checkpointWatcherLastPath = result.checkpoint_path || ''
-                setInterval(() => {
-                    this.gradioAPI.detectModelPreset().then(result => {
-                        const newPath = result.checkpoint_path || ''
+            this.gradioAPI.getCurrentCheckpointPath().then(path => {
+                this.checkpointWatcherLastPath = path || ''
+                if (this.checkpointWatcherTimer) clearInterval(this.checkpointWatcherTimer)
+                this.checkpointWatcherTimer = setInterval(() => {
+                    this.gradioAPI.getCurrentCheckpointPath().then(path => {
+                        const newPath = path || ''
                         if (!newPath || newPath === this.checkpointWatcherLastPath) return
                         this.checkpointWatcherLastPath = newPath
-                        if (!result.auto_insert) return
-                        const pos = result.positive_prefix || []
-                        const neg = result.negative_prefix || []
-                        if (!pos.length && !neg.length) return
-                        this.autoInjectQualityTags(pos, neg)
+                        this.gradioAPI.detectModelPreset(newPath).then(result => {
+                            if (!result.auto_insert) return
+                            const pos = result.positive_prefix || []
+                            const neg = result.negative_prefix || []
+                            if (!pos.length && !neg.length) return
+                            this.autoInjectQualityTags(pos, neg)
+                        }).catch(() => {})
                     }).catch(() => {})
                 }, 3000)
             }).catch(() => {})
