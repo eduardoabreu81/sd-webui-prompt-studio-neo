@@ -44,10 +44,10 @@
 
 ### v0.2 — Backend Unification *(release candidate)*
 
-> PAIO and TAC now share model metadata and Forge Neo's native extra-network catalog, while CivitAI Browser Neo remains entirely optional.
+> PAIO and TAC now share model metadata and Forge Neo's native extra-network catalog, with optional CivitAI Browser Neo integration.
 
 - **Shared model metadata cache** — PAIO and TAC reuse one CivitAI/SHA-256 backend owned by Prompt Studio Neo
-- **Optional Browser Neo integration** — existing `.json`, `.api_info.json`, and checkpoint hash data are consumed read-only when available; Browser Neo is never required
+- **Optional Browser Neo integration** — existing `.json`, `.api_info.json`, and checkpoint hash data can be consumed read-only when available
 - **Forge-native extra-network catalog** — LoRA paths, aliases, and cached network hashes come from Forge Neo once per refresh instead of repeated directory scans
 - **Filename/Alias agreement** — inserted LoRA names follow Forge Neo's `lora_preferred_name` setting
 - **Artist autocomplete with `@`** — artist-only suggestions and optional Anima-aware `@` insertion
@@ -58,7 +58,7 @@
 ## 📖 Changelog
 
 ### v0.2 — Backend Unification *(release candidate)*
-> Backend ownership is unified without making CivitAI Browser Neo a dependency. This candidate awaits remote validation before the `v0.2` tag is created.
+> Backend ownership is unified, with optional read-only CivitAI Browser Neo integration. This candidate awaits remote validation before the `v0.2` tag is created.
 
 - Added Prompt Studio's own model metadata cache for SHA-256, base model, trigger words, and CivitAI IDs
 - Reused Browser Neo `.json`, `.api_info.json`, and checkpoint hash data as optional read-only inputs; Prompt Studio never creates or mutates those files
