@@ -42,25 +42,33 @@
 
 ## 🆕 What's New
 
-### v0.1 — Unified Release
+### v0.2 — Backend Unification *(release candidate)*
 
-> Prompt All-in-One Neo and TagComplete Neo are now a single extension — one install, one update, one settings section.
+> PAIO and TAC now share model metadata and Forge Neo's native extra-network catalog, while CivitAI Browser Neo remains entirely optional.
 
-- **One extension, two engines** — the tag-chip prompt editor and the tag autocompletion now ship together and share infrastructure
-- **Unified settings** — all options live in a single **Settings → Prompt Studio Neo** section (existing saved values are preserved)
-- **Anima quality template** — built-in quality tag set for the [Anima](https://huggingface.co/circlestone-labs/Anima) model with the official recommended positive/negative tags
-- **Filename family detection** — checkpoints not found on CivitAI (local merges, unlisted models) are matched to a template family by filename token (`anima-base-v1.0` → Anima, without false-matching `animagine-xl`)
-- **📌 Pin tags per checkpoint** — pin suggested positive/negative tags to an exact checkpoint file, regardless of its model family (Pony, Flux, Illustrious, SDXL, …); pinned presets win over CivitAI detection
-- **Insert scaffold (Anima)** — one click replaces the prompt with the structured key-value skeleton (`tags:` / `char1:` / `background:`) that Anima's Qwen text encoder understands best
-- **Live Tag Colorizer** — optional read-only coloring in the four native prompt boxes, combining PAIO groups, TAC/Danbooru types, LoRAs, embeddings, wildcards, and the Anima `@artist` convention
-- **Artist autocomplete with `@`** — opt-in artist-only suggestions plus optional `@` insertion; Anima checkpoints can enable automatic artist prefixing
-- **Shared model metadata cache** — PAIO and TAC now reuse one CivitAI/SHA-256 backend; CivitAI Browser Neo metadata is consumed read-only when installed, but is never required
-- **Forge-native extra-network catalog** — LoRA paths, aliases and cached network hashes come from Forge Neo once per refresh; TAC API lookups reuse an in-memory index instead of rescanning model folders
-- **Autocomplete diagnostics** — when tag autocompletion is disabled via settings, the toolbar status dot turns gray and a clear warning is printed to the browser console and the Forge terminal
+- **Shared model metadata cache** — PAIO and TAC reuse one CivitAI/SHA-256 backend owned by Prompt Studio Neo
+- **Optional Browser Neo integration** — existing `.json`, `.api_info.json`, and checkpoint hash data are consumed read-only when available; Browser Neo is never required
+- **Forge-native extra-network catalog** — LoRA paths, aliases, and cached network hashes come from Forge Neo once per refresh instead of repeated directory scans
+- **Filename/Alias agreement** — inserted LoRA names follow Forge Neo's `lora_preferred_name` setting
+- **Artist autocomplete with `@`** — artist-only suggestions and optional Anima-aware `@` insertion
+- **Upstream compatibility updates** — nested Dynamic Prompts YAML and Forge Neo import fallbacks are included
 
 ---
 
 ## 📖 Changelog
+
+### v0.2 — Backend Unification *(release candidate)*
+> Backend ownership is unified without making CivitAI Browser Neo a dependency. This candidate awaits remote validation before the `v0.2` tag is created.
+
+- Added Prompt Studio's own model metadata cache for SHA-256, base model, trigger words, and CivitAI IDs
+- Reused Browser Neo `.json`, `.api_info.json`, and checkpoint hash data as optional read-only inputs; Prompt Studio never creates or mutates those files
+- Stopped writing TAC-private `civitai_sha256` and `civitai_trained_words` fields; legacy values remain readable for migration
+- Reused Forge Neo's native LoRA catalog for paths, aliases, and cached network hashes, with a filesystem fallback only when the host catalog is unavailable
+- Removed repeated per-request LoRA directory scans from metadata, trigger-word, hash, and thumbnail endpoints
+- Matched LoRA insertion to Forge Neo's configured Filename/Alias behavior
+- Added `@` artist completion and optional Anima-aware artist prefixing
+- Ported nested Dynamic Prompts YAML support and Forge Neo sibling-import fallbacks from TAC upstream
+- Reduced checkpoint polling to a lightweight path check; metadata is resolved only when the selected model changes
 
 ### v0.1 — Unified Release
 > First release of the unified extension. Full pre-merge histories: [Prompt All-in-One module](docs/README-prompt-all-in-one.md) · [Tag Autocomplete module](docs/README-tagcomplete.md).
@@ -72,36 +80,33 @@
 - Added **📌 Pin tags** — per-checkpoint custom presets via exact filename match, pre-filled from the detected family template, editable, with optional auto-insert
 - Added **Insert scaffold** to the Anima template card — replaces the active tab's prompt with the structured skeleton and the official negative
 - Added the optional **Live Tag Colorizer** for the native Forge prompt boxes
-- Added `@` artist completion and optional Anima-aware artist prefixing
-- Unified checkpoint/LoRA CivitAI metadata behind Prompt Studio's own cache; Browser Neo sidecars are optional read-only inputs and inherited PAIO sidecar readers remain compatibility-only
-- Reused Forge Neo's native LoRA catalog across the PAIO/TAC backend and removed repeated per-request LoRA directory scans
 - Surfaced the disabled state of tag autocompletion (gray status dot, console warning, terminal warning)
 
 ---
 
 ## 🗺️ Roadmap
 
-### v0.1 — Unified Release *(current)*
+### v0.1 — Unified Release *(complete)*
 - Single extension with both engines ✅
 - Unified settings section ✅
 - Anima quality template + filename detection ✅
 - 📌 Pin tags per checkpoint ✅
 - Insert scaffold for Anima ✅
 
-### v0.2 — Backend Unification *(implemented; remote validation pending)*
+### v0.2 — Backend Unification *(release candidate; remote validation pending)*
 - Single CivitAI client and Prompt Studio metadata cache shared by both engines ✅
 - Browser Neo integration as an optional, read-only metadata source ✅
 - Forge-aware LoRA Filename/Alias insertion ✅
 - Forge-owned extra-networks file catalog feeding both engines ✅
 
-### Backend follow-ups *(planned, non-blocking)*
-- Replace the embedding preview fallback scan when Forge Neo exposes a stable embedding catalog before model load
-- Evaluate wildcard indexing separately, preserving Dynamic Prompts paths and explicit refresh semantics
-
 ### v0.3 — Prompt Profiles & Anima Builder *(planned)*
 - Prompt Profiles: Classic (default) / Anima / Ideogram — grammar and defaults per model, never touching your data
 - Anima Prompt Builder: inline structured panel (quality, character blocks, `@artist`, environment) with tag autocompletion inside the builder fields
 - Builder presets, import/export, auto-suggest when an Anima checkpoint is loaded
+
+### v0.4 — Backend Follow-ups *(planned)*
+- Replace the embedding preview fallback scan when Forge Neo exposes a stable embedding catalog before model load
+- Evaluate wildcard indexing separately, preserving Dynamic Prompts paths and explicit refresh semantics
 
 ### vNext — Ideogram 4 Builder *(planned, after official Forge Neo support)*
 - Visual bounding-box canvas builder generating the official Ideogram 4 JSON caption schema
