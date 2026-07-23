@@ -6,8 +6,6 @@ walking the model directory again.  A caller may still publish filesystem
 fallback entries when the host catalog is unavailable.
 """
 
-from __future__ import annotations
-
 import threading
 from dataclasses import dataclass
 from pathlib import Path

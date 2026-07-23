@@ -470,12 +470,12 @@ def on_ui_settings():
         )
 
     except Exception as e:
-        print(f'sd-webui-prompt-all-in-one failed to register settings: {e}')
+        print(f'sd-webui-prompt-studio-neo failed to register settings: {e}')
 
 
 try:
     script_callbacks.on_app_started(on_app_started)
     script_callbacks.on_ui_settings(on_ui_settings)
-    print('sd-webui-prompt-all-in-one-neo background API service started successfully.')
+    print('sd-webui-prompt-studio-neo background API service started successfully.')
 except Exception as e:
-    print(f'sd-webui-prompt-all-in-one background API service failed to start: {e}')
+    print(f'sd-webui-prompt-studio-neo background API service failed to start: {e}')
