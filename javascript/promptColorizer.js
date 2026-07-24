@@ -95,6 +95,12 @@
     function animaAt() {
         return typeof opts !== "undefined" && opts.psn_colorizer_anima_at !== "Off";
     }
+    // Forge disables the negative prompt textarea outright when cfg_scale <= 1 (it has no
+    // effect at CFG 1) — see modules/ui.py: `cfg_scale.change(fn=use_cfg, ...)` where
+    // `use_cfg` returns `gr.update(interactive=(val > 1.0))`. The gray look the user sees
+    // is the browser's native `:disabled` textarea style. We override the textarea's own
+    // color to transparent, which hides that, so the overlay has to reproduce the dimming
+    // itself — driven directly off `ta.disabled`, which Forge sets for us.
 
     // --- tokenizer (proven in Stage 0) ---------------------------------------
     // <...> may not contain < or newline: an unpaired < earlier in the prompt (e.g. the
@@ -176,7 +182,18 @@
         let raf = 0;
         // remember what we rendered: the periodic scan uses this to catch value changes
         // that arrive without an input event (Gradio backend updates, paste arrow, PAIO)
-        function render() { copyStyles(); place(); const v = ta.value; hl.innerHTML = tokensToHtml(v); ta._psnTcLast = v; syncScroll(); }
+        function render() {
+            copyStyles(); place();
+            const v = ta.value;
+            hl.innerHTML = tokensToHtml(v);
+            // mirror Forge's own `disabled` dimming on the overlay (colored spans included)
+            // since our override of the textarea's color already hid the native gray look
+            const dim = ta.disabled;
+            hl.style.opacity = dim ? "0.5" : "1";
+            ta._psnTcLast = v;
+            ta._psnTcDim = dim;
+            syncScroll();
+        }
         function schedule() { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; ensureDanMap(); render(); }); }
 
         ta.addEventListener("input", schedule);       // read-only: never dispatch input ourselves
@@ -223,6 +240,9 @@
                     detach(ta);            // Gradio removed our backdrop but kept the textarea — reattach below
                 } else if (ta._psnTcLast !== ta.value) {
                     tc.schedule();         // value changed with no input event — resync the overlay
+                    continue;
+                } else if (ta._psnTcDim !== ta.disabled) {
+                    tc.schedule();         // CFG scale toggled `disabled` — doesn't touch ta.value, so resync explicitly
                     continue;
                 } else {
                     continue;
