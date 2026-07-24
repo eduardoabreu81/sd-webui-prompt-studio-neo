@@ -47,7 +47,7 @@
 
 ### v0.1
 
-> First release of the unified extension — the two modules share one settings section, one metadata backend, and one extra-network catalog. Full pre-merge histories (now legacy): [Prompt All-in-One module](docs/README-prompt-all-in-one.md) · [Tag Autocomplete module](docs/README-tagcomplete.md).
+> First release of the unified extension — the two modules share one settings section, one metadata backend, and one extra-network catalog. Full pre-merge histories (now legacy), archived on the Wiki: [Prompt All-in-One module](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Legacy-Prompt-All-in-One) · [Tag Autocomplete module](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Legacy-TagComplete).
 
 - **Live Tag Colorizer** — read-only overlay that colorizes prompt text by tag type as you type; see [Live Tag Colorizer](#-live-tag-colorizer-) under Features
 - **Shared model metadata cache** — PAIO and TAC reuse one CivitAI/SHA-256 backend owned by Prompt Studio Neo
