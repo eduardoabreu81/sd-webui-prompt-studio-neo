@@ -10,14 +10,16 @@
 [![Gradio](https://img.shields.io/badge/Gradio-4.39.0+-orange)](https://gradio.app/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/eduardoabreu81/sd-webui-prompt-studio-neo?style=flat-square)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/stargazers)
+[![Wiki](https://img.shields.io/badge/📖-Wiki-blueviolet)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki)
 
-> **Extension for [Stable Diffusion WebUI Forge - Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)**
+> **Extension for [Stable Diffusion WebUI Forge - Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)** · **[📖 Full documentation on the Wiki](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki)**
 
 </div>
 
 **The all-in-one prompt workstation for Forge Neo** — an interactive tag-chip prompt editor with translation, history, favorites, and quality presets, plus Danbooru/e621 tag autocompletion with LoRA trigger word injection. Two battle-tested extensions, one install.
 
-> ⚠️ **This is a unified fork.** Prompt Studio Neo merges two projects into a single extension:
+> [!Important]
+> **This is a unified fork.** Prompt Studio Neo merges two projects into a single extension:
 > the prompt editor created by [Physton](https://github.com/Physton) in [sd-webui-prompt-all-in-one](https://github.com/Physton/sd-webui-prompt-all-in-one), and the tag autocompletion created by [DominikDoom](https://github.com/DominikDoom) in [a1111-sd-webui-tagcomplete](https://github.com/DominikDoom/a1111-sd-webui-tagcomplete). It is maintained exclusively for Forge Neo. If you are not running Forge Neo, **please use the original extensions instead**.
 
 ---
@@ -30,6 +32,7 @@
 - [Features](#-features)
   - [Prompt Editing](#️-prompt-editing)
   - [Tag Autocompletion](#️-tag-autocompletion)
+  - [Live Tag Colorizer](#-live-tag-colorizer-)
   - [Quality Presets](#-quality-presets-)
 - [Demo](#-demo)
 - [Installation](#-installation)
@@ -42,24 +45,32 @@
 
 ## 🆕 What's New
 
-### v0.2 — Backend Unification *(release candidate)*
+### v0.1
 
-> PAIO and TAC now share model metadata and Forge Neo's native extra-network catalog, with optional CivitAI Browser Neo integration.
+> First release of the unified extension — the two modules share one settings section, one metadata backend, and one extra-network catalog. Full pre-merge histories (now legacy): [Prompt All-in-One module](docs/README-prompt-all-in-one.md) · [Tag Autocomplete module](docs/README-tagcomplete.md).
 
+- **Live Tag Colorizer** — read-only overlay that colorizes prompt text by tag type as you type; see [Live Tag Colorizer](#-live-tag-colorizer-) under Features
 - **Shared model metadata cache** — PAIO and TAC reuse one CivitAI/SHA-256 backend owned by Prompt Studio Neo
 - **Optional Browser Neo integration** — existing `.json`, `.api_info.json`, and checkpoint hash data can be consumed read-only when available
 - **Forge-native extra-network catalog** — LoRA paths, aliases, and cached network hashes come from Forge Neo once per refresh instead of repeated directory scans
-- **Filename/Alias agreement** — inserted LoRA names follow Forge Neo's `lora_preferred_name` setting
 - **Artist autocomplete with `@`** — artist-only suggestions and optional Anima-aware `@` insertion
-- **Upstream compatibility updates** — nested Dynamic Prompts YAML and Forge Neo import fallbacks are included
+- **📌 Pin tags** — per-checkpoint custom Quality Preset overrides
+- **Anima** added as a built-in Quality Presets template, with an Insert scaffold for its structured prompt format
 
 ---
 
 ## 📖 Changelog
 
-### v0.2 — Backend Unification *(release candidate)*
-> Backend ownership is unified, with optional read-only CivitAI Browser Neo integration. This candidate awaits remote validation before the `v0.2` tag is created.
+### v0.1
 
+- Merged `sd-webui-prompt-all-in-one-neo` (v0.3.3) and `sd-webui-tagcomplete-neo` (v0.2.1) into one repository, preserving both git histories
+- Unified `install.py`, combined MIT license notices, single `Settings → Prompt Studio Neo` section (option keys unchanged — saved values survive the migration)
+- Added `Anima` to the Quality Presets built-in templates (official README tags: `masterpiece, best quality, score_7, safe` / `worst quality, low quality, score_1, score_2, score_3, artist name`)
+- Added token-based filename family detection as a CivitAI fallback for Quality Presets
+- Added **📌 Pin tags** — per-checkpoint custom presets via exact filename match, pre-filled from the detected family template, editable, with optional auto-insert
+- Added **Insert scaffold** to the Anima template card — replaces the active tab's prompt with the structured skeleton and the official negative
+- Added the optional **Live Tag Colorizer** for the native Forge prompt boxes (see [Live Tag Colorizer](#-live-tag-colorizer-) under Features for the full picture)
+- Surfaced the disabled state of tag autocompletion (gray status dot, console warning, terminal warning)
 - Added Prompt Studio's own model metadata cache for SHA-256, base model, trigger words, and CivitAI IDs
 - Reused Browser Neo `.json`, `.api_info.json`, and checkpoint hash data as optional read-only inputs; Prompt Studio never creates or mutates those files
 - Stopped writing TAC-private `civitai_sha256` and `civitai_trained_words` fields; legacy values remain readable for migration
@@ -70,41 +81,28 @@
 - Ported nested Dynamic Prompts YAML support and Forge Neo sibling-import fallbacks from TAC upstream
 - Reduced checkpoint polling to a lightweight path check; metadata is resolved only when the selected model changes
 
-### v0.1 — Unified Release
-> First release of the unified extension. Full pre-merge histories: [Prompt All-in-One module](docs/README-prompt-all-in-one.md) · [Tag Autocomplete module](docs/README-tagcomplete.md).
-
-- Merged `sd-webui-prompt-all-in-one-neo` (v0.3.3) and `sd-webui-tagcomplete-neo` (v0.2.1) into one repository, preserving both git histories
-- Unified `install.py`, combined MIT license notices, single `Settings → Prompt Studio Neo` section (option keys unchanged — saved values survive the migration)
-- Added `Anima` to the Quality Presets built-in templates (official README tags: `masterpiece, best quality, score_7, safe` / `worst quality, low quality, score_1, score_2, score_3, artist name`)
-- Added token-based filename family detection as a CivitAI fallback for Quality Presets
-- Added **📌 Pin tags** — per-checkpoint custom presets via exact filename match, pre-filled from the detected family template, editable, with optional auto-insert
-- Added **Insert scaffold** to the Anima template card — replaces the active tab's prompt with the structured skeleton and the official negative
-- Added the optional **Live Tag Colorizer** for the native Forge prompt boxes
-- Surfaced the disabled state of tag autocompletion (gray status dot, console warning, terminal warning)
-
 ---
 
 ## 🗺️ Roadmap
 
-### v0.1 — Unified Release *(complete)*
+### v0.1 *(in progress, not yet released)*
 - Single extension with both engines ✅
 - Unified settings section ✅
 - Anima quality template + filename detection ✅
 - 📌 Pin tags per checkpoint ✅
 - Insert scaffold for Anima ✅
-
-### v0.2 — Backend Unification *(release candidate; remote validation pending)*
 - Single CivitAI client and Prompt Studio metadata cache shared by both engines ✅
 - Browser Neo integration as an optional, read-only metadata source ✅
 - Forge-aware LoRA Filename/Alias insertion ✅
 - Forge-owned extra-networks file catalog feeding both engines ✅
+- Live Tag Colorizer (Stage 1) ✅
 
-### v0.3 — Prompt Profiles & Anima Builder *(planned)*
+### v0.2 — Prompt Profiles & Anima Builder *(planned)*
 - Prompt Profiles: Classic (default) / Anima / Ideogram — grammar and defaults per model, never touching your data
 - Anima Prompt Builder: inline structured panel (quality, character blocks, `@artist`, environment) with tag autocompletion inside the builder fields
 - Builder presets, import/export, auto-suggest when an Anima checkpoint is loaded
 
-### v0.4 — Backend Follow-ups *(planned)*
+### v0.3 — Backend Follow-ups *(planned)*
 - Replace the embedding preview fallback scan when Forge Neo exposes a stable embedding catalog before model load
 - Evaluate wildcard indexing separately, preserving Dynamic Prompts paths and explicit refresh semantics
 
@@ -123,6 +121,7 @@
 > ⭐ = added in the Neo forks or in Prompt Studio Neo · everything else is original work by [Physton](https://github.com/Physton) and [DominikDoom](https://github.com/DominikDoom)
 
 ### ✏️ Prompt Editing
+*[Full details on the Wiki →](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Feature-Prompt-Editing)*
 
 - **Intuitive tag interface** — displays prompt tokens as individual styled chips with bilingual (source ↔ translated) comparison
 - **Drag to reorder** — rearrange tags by dragging without retyping
@@ -135,6 +134,7 @@
 - **Suggested tag groups** — one-click keyword addition from curated category tabs (Person, Apparel, Scene, Camera, …)
 
 ### 🔤 Translation
+*[Full details on the Wiki →](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Feature-Translation)*
 
 - **Auto-translate** — translates prompt/negative prompt automatically as you type
 - **Batch translation** — translate all tags at once with one click
@@ -144,6 +144,7 @@
 - **Translation history** — per-tag translated value stored and shown inline
 
 ### 🗂️ History & Favorites
+*[Full details on the Wiki →](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Feature-History-Favorites)*
 
 - **Automatic history** — every prompt change is recorded
 - **Favorites** — bookmark individual tags or entire prompts; one-click restore
@@ -151,6 +152,7 @@
 - **Export / Import favorites** — move your favorites between installs as a single JSON file ⭐
 
 ### 🏷️ Tag Autocompletion
+*[Full details on the Wiki →](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Feature-Tag-Autocompletion)*
 
 - **Instant suggestions** as you type, sourced from Danbooru, e621, or merged lists
 - **Indexed search** — built-in prefix index for near-instant filtering on large tag lists ⭐
@@ -165,7 +167,21 @@
 - **Wildcards** — `__` autocomplete with nested folders and YAML (UMI) support
 - **Chants** — prompt preset completion for longer phrase templates (`<c:`)
 
+### 🌈 Live Tag Colorizer ⭐ *(Stage 1)*
+*[Full details on the Wiki →](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Feature-Live-Tag-Colorizer)*
+
+Colorizes the native Forge Neo prompt/negative-prompt textareas by tag type, live as you type — a read-only overlay rendered behind a transparent textarea, so copy/paste, undo, and native Gradio behavior are never affected.
+
+- **Data-driven, nothing hardcoded** — reuses TAC's own Danbooru type colors (`tac_colormap`) and embedding color for regular tags, plus PAIO's `group_tags` colors for tags in a curated group, served read-only from `/prompt-studio-neo/paio-colors`
+- **Dedicated colors for extra networks and wildcards** — `<lora:…>` / `<lyco:…>` / `<hypernet:…>` tokens use TAC's LoRA color; `__wildcard__` tokens use their own configurable color pair
+- **`@artist` recognized** (Anima convention) — togglable independently in Settings
+- **Theme-aware** — every color is a `[darkThemeColor, lightThemeColor]` pair, picked automatically from page background luminance
+- **Instant, no typing delay** — coloring updates on every keystroke, with a lightweight watchdog that resyncs after paste, undo, or non-typed value changes (e.g. PAIO rewriting the textarea)
+- **Covers the four core prompt boxes** — txt2img/img2img prompt and negative prompt
+- **Off by default** — enable **Live Tag Colorizer** in **Settings → Prompt Studio Neo**; a restart or UI reload is required after enabling
+
 ### ➕ Extra Networks
+*[Full details on the Wiki →](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Feature-Extra-Networks)*
 
 - **LoRA / LyCORIS / Textual Inversion detection** — recognized chips highlighted with distinct colors, existence check, metadata popup with preview and trained keywords
 - **LoRA and LyCORIS autocomplete** triggered by `<`, embeddings by `<e:`, with thumbnail previews
@@ -173,11 +189,13 @@
 - **Trigger word injection** on LoRA selection — reuses optional Browser Neo metadata or Prompt Studio's own SHA-256 cache, with configurable insertion position; model sidecars are never modified ⭐
 
 ### 🤖 ChatGPT Integration
+*[Full details on the Wiki →](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Feature-ChatGPT-Integration)*
 
 - **Generate prompts with ChatGPT** — describe your scene in plain language and get a prompt back
 - **Configurable model and API key** — works with any OpenAI-compatible endpoint
 
 ### 🎯 Quality Presets ⭐
+*[Full details on the Wiki →](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Feature-Quality-Presets)*
 
 - **Templates** — built-in quality tag sets per model family (Pony, NoobAI, Illustrious, SDXL, SD 1.5, Flux.1, **Anima**); each family independently toggleable; editable positive + negative overrides per family
 - **Checkpoint scanner** — identify any installed checkpoint's model family by querying CivitAI with its SHA-256 hash; results cached locally; filename-token fallback for models CivitAI doesn't know
@@ -188,6 +206,7 @@
 - **CivitAI API key** stored in **Forge Settings → Prompt Studio Neo** (not in browser storage)
 
 ### ⚙️ Format & Settings
+*[Full details on the Wiki →](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Feature-Format-Settings)*
 
 - **Prompt format options** — comma spacing, trailing comma removal, LoRA separator behavior, newline handling
 - **Blacklist** — tags that are automatically filtered out
@@ -253,14 +272,16 @@
 3. Paste: `https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo`
 4. Click **Install** and reload WebUI
 
-> ⚠️ **Already using the separate extensions?** Uninstall `sd-webui-prompt-all-in-one-neo` and `sd-webui-tagcomplete-neo` first — Prompt Studio Neo replaces both, and running them together will duplicate functionality. Your saved settings, favorites, and history are preserved (the option keys and storage paths are unchanged).
+> [!Warning]
+> **Already using the separate extensions?** Uninstall `sd-webui-prompt-all-in-one-neo` and `sd-webui-tagcomplete-neo` first — Prompt Studio Neo replaces both, and running them together will duplicate functionality. Your saved settings, favorites, and history are preserved (the option keys and storage paths are unchanged).
 
 ### Requirements
 
 - ✅ [Stable Diffusion WebUI Forge - Neo](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
 - ✅ Python 3.10+
 
-> ⚠️ **Not using Forge Neo?** Use the original extensions ([prompt-all-in-one](https://github.com/Physton/sd-webui-prompt-all-in-one) · [tagcomplete](https://github.com/DominikDoom/a1111-sd-webui-tagcomplete)) instead. This extension will not work correctly on Automatic1111 or Forge Classic.
+> [!Warning]
+> **Not using Forge Neo?** Use the original extensions ([prompt-all-in-one](https://github.com/Physton/sd-webui-prompt-all-in-one) · [tagcomplete](https://github.com/DominikDoom/a1111-sd-webui-tagcomplete)) instead. This extension will not work correctly on Automatic1111 or Forge Classic.
 
 ---
 
