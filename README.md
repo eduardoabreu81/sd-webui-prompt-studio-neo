@@ -70,6 +70,7 @@
 - Added **📌 Pin tags** — per-checkpoint custom presets via exact filename match, pre-filled from the detected family template, editable, with optional auto-insert
 - Added **Insert scaffold** to the Anima template card — replaces the active tab's prompt with the structured skeleton and the official negative
 - Added the optional **Live Tag Colorizer** for the native Forge prompt boxes (see [Live Tag Colorizer](#-live-tag-colorizer-) under Features for the full picture)
+- Fixed the Live Tag Colorizer keeping negative-prompt tags at full brightness when CFG Scale ≤ 1; the overlay now dims to match Forge's own `disabled` state on that textarea
 - Surfaced the disabled state of tag autocompletion (gray status dot, console warning, terminal warning)
 - Added Prompt Studio's own model metadata cache for SHA-256, base model, trigger words, and CivitAI IDs
 - Reused Browser Neo `.json`, `.api_info.json`, and checkpoint hash data as optional read-only inputs; Prompt Studio never creates or mutates those files
