@@ -219,47 +219,7 @@ Colorizes the native Forge Neo prompt/negative-prompt textareas by tag type, liv
 
 ## 🎬 Demo
 
-*All demos below are from the original [physton/sd-webui-prompt-all-in-one](https://github.com/Physton/sd-webui-prompt-all-in-one) — full credit to [Physton](https://github.com/Physton).*
-
-- **Switch language**
-
-  ![](https://s1.imagehub.cc/images/2023/06/06/demo.switch_language.gif)
-
-- **Automatic translation**
-
-  ![](https://s1.imagehub.cc/images/2023/06/06/demo.auto_translate.gif)
-
-- **Elegant input**
-
-  ![](https://s1.imagehub.cc/images/2023/06/06/demo.elegant_input.gif)
-
-- **Quick weight adjustment**
-
-  ![](https://s1.imagehub.cc/images/2023/06/06/demo.quick_adjust.gif)
-
-- **Favorite and History**
-
-  ![](https://s1.imagehub.cc/images/2023/06/06/demo.history_favorite.gif)
-
-- **Use ChatGPT to generate prompts**
-
-  ![](https://s1.imagehub.cc/images/2023/06/06/demo.chatgpt.gif)
-
-- **LoRA / LyCORIS / Textual Inversion highlighting**
-
-  ![](https://s1.imagehub.cc/images/2023/06/06/demo.keyword_detection.gif)
-
-- **Prompt format options**
-
-  ![](https://s1.imagehub.cc/images/2023/06/06/demo.prompt_format.gif)
-
-- **Batch operations**
-
-  ![](https://s1.imagehub.cc/images/2023/06/06/demo.batch_operation.gif)
-
-- **One-click keyword addition**
-
-  ![](https://s1.imagehub.cc/images/2023/08/15/demo.group_tags.gif)
+GIFs of the editor in action (language switching, translation, weight adjustment, favorites, ChatGPT integration, and more) are on the **[Demo wiki page](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Demo)**.
 
 ---
 
