@@ -53,7 +53,7 @@
 - **Shared model metadata cache** — PAIO and TAC reuse one CivitAI/SHA-256 backend owned by Prompt Studio Neo
 - **Optional Browser Neo integration** — existing `.json`, `.api_info.json`, and checkpoint hash data can be consumed read-only when available
 - **Forge-native extra-network catalog** — LoRA paths, aliases, and cached network hashes come from Forge Neo once per refresh instead of repeated directory scans
-- **Artist autocomplete with `@`** — artist-only suggestions and optional Anima-aware `@` insertion
+- **Artist autocomplete with `@`** — artist-only suggestions that keep the `@` on insertion, plus optional Anima-aware prefixing for artists typed without it
 - **📌 Pin tags** — per-checkpoint custom Quality Preset overrides
 - **Anima** added as a built-in Quality Presets template, with an Insert scaffold for its structured prompt format
 
@@ -79,6 +79,8 @@
 - Removed repeated per-request LoRA directory scans from metadata, trigger-word, hash, and thumbnail endpoints
 - Matched LoRA insertion to Forge Neo's configured Filename/Alias behavior
 - Added `@` artist completion and optional Anima-aware artist prefixing
+- Fixed the typed `@` being dropped when inserting an Artist tag; enabling only the `@` trigger now gives Anima's `@artist` syntax without also needing "Always add `@`"
+- Replaced the two duplicate CivitAI API key fields with the single masked one; a key left by a pre-merge TagComplete install is still read from `config.json`
 - Ported nested Dynamic Prompts YAML support and Forge Neo sibling-import fallbacks from TAC upstream
 - Reduced checkpoint polling to a lightweight path check; metadata is resolved only when the selected model changes
 
@@ -159,7 +161,7 @@
 - **Indexed search** — built-in prefix index for near-instant filtering on large tag lists ⭐
 - **Keyboard navigation** — arrow keys, Tab, Enter, Escape, all configurable
 - **Tag color coding** by category, with post count for relevance
-- **Artist completion via `@`** — filters suggestions to Danbooru Artist tags; optional automatic `@` insertion for Anima ⭐
+- **Artist completion via `@`** — type `@` for artist-only suggestions, keeping the `@` on insertion for Anima's `@artist` syntax (off by default) ⭐
 - **Alias and translation search** — find tags by their alternate names or translated terms
 - **Frequency sorting** — remembers your most-used tags and promotes them to the top ⭐
 - **Multi-word tag search** — type any word of a multi-word tag (e.g. `towards` → `walking_towards_viewer`) ⭐
