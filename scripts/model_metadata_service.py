@@ -596,7 +596,13 @@ def _forge_hash(path: Path, model_type: str, *, calculate: bool) -> str:
 
 
 def get_prompt_studio_api_key() -> str:
-    """Use Prompt Studio's PAIO key, with TAC's old key as migration fallback."""
+    """Return the single CivitAI key from settings.
+
+    ``paio_neo_civitai_api_key`` is the only key exposed in the UI. The old
+    TagComplete ``tac_civitaiApiKey`` option was removed, but a value left in
+    config.json by a pre-merge install is still honoured so upgrades don't
+    silently lose the key (``Options.__getattr__`` reads unregistered keys).
+    """
     try:
         from modules import shared
 
