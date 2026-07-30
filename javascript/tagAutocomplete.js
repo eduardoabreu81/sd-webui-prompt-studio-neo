@@ -529,7 +529,12 @@ async function insertTextAtCursor(textArea, result, tagword, tabCompletedWithout
         }
     }
 
-    const shouldPrefixArtist = TAC_CFG.artistInsertAt || (
+    // The '@' the user typed to trigger artist search is part of the tagword, so
+    // the replacement further down would swallow it. Keep it: typing '@' is an
+    // explicit request for Anima's '@artist' syntax, independently of the
+    // settings below, which cover artists completed without a typed '@'.
+    const typedArtistAt = tagword.startsWith("@");
+    const shouldPrefixArtist = typedArtistAt || TAC_CFG.artistInsertAt || (
         currentModelIsAnima && TAC_CFG.animaArtistPrefix !== "Off"
         && TAC_CFG.tagFile && TAC_CFG.tagFile.toLowerCase().startsWith("danbooru")
     );
