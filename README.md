@@ -80,6 +80,7 @@
 - Matched LoRA insertion to Forge Neo's configured Filename/Alias behavior
 - Added `@` artist completion and optional Anima-aware artist prefixing
 - Fixed the typed `@` being dropped when inserting an Artist tag; enabling only the `@` trigger now gives Anima's `@artist` syntax without also needing "Always add `@`"
+- Fixed the Live Tag Colorizer painting every `@word` with the Artist color; `@` tags are now colored by their real category, so `@_@` reads as the general tag it is and an unrecognized name stays uncolored
 - Replaced the two duplicate CivitAI API key fields with the single masked one; a key left by a pre-merge TagComplete install is still read from `config.json`
 - Ported nested Dynamic Prompts YAML support and Forge Neo sibling-import fallbacks from TAC upstream
 - Reduced checkpoint polling to a lightweight path check; metadata is resolved only when the selected model changes
