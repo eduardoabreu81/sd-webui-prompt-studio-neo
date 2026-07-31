@@ -114,8 +114,18 @@
         const t = chunk.trim();
         if (!t) return null;
         if (t === "BREAK" || t === "AND" || t === "NOT") return null;
-        if (t[0] === "@" && animaAt()) return danbooruColor("1");          // Anima artist marker
         const norm = t.toLowerCase().replace(/\s+/g, "_");
+        // Anima's '@' artist marker. A leading '@' is not evidence that what follows is
+        // an artist, so the tag is colored by its *actual* category instead of assuming
+        // category 1. The full token is looked up first, because a few real tags carry
+        // the '@' in the name itself (@_@ is a general tag, @shun / @est@ are artists);
+        // only then the name without the prefix. Unknown names stay uncolored.
+        if (t[0] === "@" && animaAt()) {
+            if (!danMap) return null;
+            if (danMap.has(norm)) return danbooruColor(danMap.get(norm));
+            const bare = norm.slice(1);
+            return bare && danMap.has(bare) ? danbooruColor(danMap.get(bare)) : null;
+        }
         if (paioColors) {                                                              // 1) PAIO group (already user-configured)
             // group_tags/*.yaml keys are inconsistent (some spaced, some underscored) — try both
             const pc = paioColors[norm] || paioColors[t.toLowerCase()];
