@@ -107,7 +107,11 @@
     // <3 emoticon tag, or a second lora being typed) must not swallow a following
     // <lora:...>. < and > are also NOT punctuation (group 4) so a stray ( or ) glued to
     // < can't eat it either — this makes weighted loras like (<lora:x:1>:1.2) work.
-    const TOKEN_RE = /(<[^<>\n]*>)|(__[^_\s][^_]*__)|((?:(?!__)[^,()\[\]{}<>:|\n])+)|([,()\[\]{}:|\n]+)|([\s\S])/g;
+    // __wildcard__ names routinely carry single underscores (__hair_style__, __2_girls__),
+    // so the body allows a lone _ via `_(?!_)` and only stops at the closing __. A plain
+    // [^_]* body would break every such name AND mis-match across two wildcards — in
+    // "__hair_style__, __color__" it matched the "__, __" in the middle instead.
+    const TOKEN_RE = /(<[^<>\n]*>)|(__(?![\s_])(?:[^_\n]|_(?!_))*__)|((?:(?!__)[^,()\[\]{}<>:|\n])+)|([,()\[\]{}:|\n]+)|([\s\S])/g;
     function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
     function classifyPhrase(chunk) {
