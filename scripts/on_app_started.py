@@ -5,6 +5,7 @@ from pathlib import Path
 from modules import script_callbacks, extra_networks, prompt_parser
 from fastapi import FastAPI, Body, Request, Response
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 from scripts.physton_prompt.storage import Storage
 from scripts.physton_prompt.get_extensions import get_extensions
 from scripts.physton_prompt.get_token_counter import get_token_counter
@@ -67,15 +68,19 @@ except Exception as e:
 def on_app_started(_: gr.Blocks, app: FastAPI):
     hi = History()
 
+    # Sync on purpose: FastAPI runs non-async routes on a threadpool, so this
+    # blocking work never stalls the event loop (and with it, the whole WebUI).
     @app.get("/physton_prompt/get_version")
-    async def _get_version():
+    def _get_version():
         return {
             'version': get_git_commit_version(),
             'latest_version': get_latest_version(),
         }
 
+    # Sync on purpose: FastAPI runs non-async routes on a threadpool, so this
+    # blocking work never stalls the event loop (and with it, the whole WebUI).
     @app.get("/physton_prompt/get_remote_versions")
-    async def _get_remote_versions(page: int = 1, per_page: int = 100):
+    def _get_remote_versions(page: int = 1, per_page: int = 100):
         return {
             'versions': get_git_remote_versions(page, per_page),
         }
@@ -99,7 +104,8 @@ def on_app_started(_: gr.Blocks, app: FastAPI):
             return {"result": get_lang('is_required', {'0': 'name'})}
         if 'package' not in data:
             return {"result": get_lang('is_required', {'0': 'package'})}
-        return {"result": install_package(data['name'], data['package'])}
+        result = await run_in_threadpool(install_package, data['name'], data['package'])
+        return {"result": result}
 
     @app.get("/physton_prompt/get_extensions")
     async def _get_extensions():
@@ -334,7 +340,14 @@ def on_app_started(_: gr.Blocks, app: FastAPI):
             return {"success": False, "message": get_lang('is_required', {'0': 'api'})}
         if 'api_config' not in data:
             return {"success": False, "message": get_lang('is_required', {'0': 'api_config'})}
-        return translate(data['text'], data['from_lang'], data['to_lang'], data['api'], data['api_config'])
+        return await run_in_threadpool(
+            translate,
+            data['text'],
+            data['from_lang'],
+            data['to_lang'],
+            data['api'],
+            data['api_config'],
+        )
 
     @app.post("/physton_prompt/translates")
     async def _translates(request: Request):
@@ -349,7 +362,14 @@ def on_app_started(_: gr.Blocks, app: FastAPI):
             return {"success": False, "message": get_lang('is_required', {'0': 'api'})}
         if 'api_config' not in data:
             return {"success": False, "message": get_lang('is_required', {'0': 'api_config'})}
-        return translate(data['texts'], data['from_lang'], data['to_lang'], data['api'], data['api_config'])
+        return await run_in_threadpool(
+            translate,
+            data['texts'],
+            data['from_lang'],
+            data['to_lang'],
+            data['api'],
+            data['api_config'],
+        )
 
     @app.get("/physton_prompt/get_csvs")
     async def _get_csvs():
@@ -385,12 +405,15 @@ def on_app_started(_: gr.Blocks, app: FastAPI):
         if 'api_config' not in data:
             return {"success": False, "message": get_lang('is_required', {'0': 'api_config'})}
         try:
-            return {"success": True, 'result': gen_openai(data['messages'], data['api_config'])}
+            result = await run_in_threadpool(gen_openai, data['messages'], data['api_config'])
+            return {"success": True, 'result': result}
         except Exception as e:
             return {"success": False, 'message': str(e)}
 
+    # Sync on purpose: FastAPI runs non-async routes on a threadpool, so this
+    # blocking work never stalls the event loop (and with it, the whole WebUI).
     @app.post("/physton_prompt/mbart50_initialize")
-    async def _mbart50_initialize(request: Request):
+    def _mbart50_initialize(request: Request):
         try:
             mbart50_initialize(True)
             return {"success": True}
