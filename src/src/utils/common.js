@@ -8,9 +8,12 @@ export default {
     loraRegex: /^\<lora:\s*([^\:]+)\s*(:)?\s*(\-?[0-9\.]+)?([^\>]+)?\>/,
     // lycoRegex: /^\<lyco:\s*([^\:]+)\s*(:)?\s*(\-?[0-9\.]+)?\>$/,
     lycoRegex: /^\<lyco:\s*([^\:]+)\s*(:)?\s*(\-?[0-9\.]+)?([^\>]+)?\>$/,
-    weightNumRegex: /(.*):(\-?[0-9\.]+)/,
-    weightNumRegexEN: /(.*):\s*(\-?[0-9\.]+)/,
-    weightNumRegexCN: /(.*)：\s*(\-?[0-9\.]+)/,
+    // The weight number must be the LAST thing in the tag (ignoring any closing
+    // brackets), otherwise plain text like "subject: 1girl" would be read as
+    // the tag "subject" with weight 1 and rewritten to "subject:1.0girl".
+    weightNumRegex: /(.*):(\-?[0-9\.]+)(?=[\)\]\}\>]*$)/,
+    weightNumRegexEN: /(.*):\s*(\-?[0-9\.]+)(?=[\)\]\}\>]*$)/,
+    weightNumRegexCN: /(.*)：\s*(\-?[0-9\.]+)(?=[\)\]\}\>]*$)/,
     bracketsEN: [
         {'(': '(', ')': ')'},
         {'[': '[', ']': ']'},

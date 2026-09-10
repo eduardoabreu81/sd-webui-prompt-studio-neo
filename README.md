@@ -84,6 +84,7 @@
 - Replaced the two duplicate CivitAI API key fields with the single masked one; a key left by a pre-merge TagComplete install is still read from `config.json`
 - Ported nested Dynamic Prompts YAML support and Forge Neo sibling-import fallbacks from TAC upstream
 - Reduced checkpoint polling to a lightweight path check; metadata is resolved only when the selected model changes
+- Fixed text after a colon being parsed as a tag weight; typing `subject: 1girl` no longer becomes `subject:1.0girl`. A weight is now only recognized when the number ends the tag, ignoring trailing brackets, so `(masterpiece:1.2)`, `[bad hands:0.8]` and `<lora:name:0.8>` keep working
 
 ---
 
