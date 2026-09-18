@@ -765,6 +765,15 @@ def on_ui_settings():
         "4": ["lightgreen", "darkgreen"],
         "5": ["orange", "darkorange"]
     },
+    "gelbooru": {
+        "-1": ["red", "maroon"],
+        "0": ["lightblue", "dodgerblue"],
+        "1": ["indianred", "firebrick"],
+        "3": ["violet", "darkorchid"],
+        "4": ["lightgreen", "darkgreen"],
+        "5": ["orange", "darkorange"],
+        "6": ["gray", "dimgray"]
+    },
     "e621": {
         "-1": ["red", "maroon"],
         "0": ["lightblue", "dodgerblue"],

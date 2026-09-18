@@ -8,6 +8,9 @@ __pycache__/
 tags/temp/
 tags/tag_frequency.db
 
+# Downloads em cache dos geradores de lista de tags (tools/build_*.py)
+tools/.cache/
+
 # ============================================
 # Documentação privada de contexto para IA
 # (contém decisões internas e histórico)
