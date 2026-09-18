@@ -148,6 +148,34 @@ def load_aliases(path: Path) -> tuple[dict[str, list[str]], int]:
     return by_tag, dropped
 
 
+def drop_self_referential(
+    rows: list[tuple[str, str, str]], aliases: dict[str, list[str]]
+) -> tuple[dict[str, list[str]], int]:
+    """Remove alias entries whose alias is itself a tag in the list.
+
+    Gelbooru's alias table lists pairs the site does not actually enforce: both
+    sides frequently exist as separate tags with their own post counts, e.g.
+    eyes_closed (538k) alongside closed_eyes (1.0M), or sole_female (4.0M)
+    alongside 1girl. Keeping such a pair makes the autocomplete answer a search
+    for the alias with the other tag, so the tag the user typed - a real,
+    heavily used tag - becomes unreachable.
+
+    Dropping them costs nothing: a tag present in the list is already found by
+    typing its own name, so the alias adds no discoverability.
+    """
+    known = {name for name, _, _ in rows}
+    filtered: dict[str, list[str]] = {}
+    dropped = 0
+
+    for tag, values in aliases.items():
+        kept = [alias for alias in values if alias not in known]
+        dropped += len(values) - len(kept)
+        if kept:
+            filtered[tag] = kept
+
+    return filtered, dropped
+
+
 def write_list(rows: list[tuple[str, str, str]], aliases: dict[str, list[str]], output: Path) -> int:
     """Write the final CSV and return how many tags received at least one alias."""
     matched = 0
@@ -192,6 +220,11 @@ def main() -> int:
     aliases, dropped = load_aliases(alias_path)
     alias_count = sum(len(values) for values in aliases.values())
     print(f"  {alias_count} aliases utilizáveis ({dropped} descartados por vírgula ou aspas)")
+
+    aliases, self_referential = drop_self_referential(rows, aliases)
+    alias_count = sum(len(values) for values in aliases.values())
+    print(f"  {self_referential} descartados por já existirem como tag própria")
+    print(f"  {alias_count} aliases aplicados")
 
     matched = write_list(rows, aliases, args.output)
 
