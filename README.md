@@ -88,6 +88,7 @@
 - Ported nested Dynamic Prompts YAML support and Forge Neo sibling-import fallbacks from TAC upstream
 - Reduced checkpoint polling to a lightweight path check; metadata is resolved only when the selected model changes
 - Fixed text after a colon being parsed as a tag weight; typing `subject: 1girl` no longer becomes `subject:1.0girl`. A weight is now only recognized when the number ends the tag, ignoring trailing brackets, so `(masterpiece:1.2)`, `[bad hands:0.8]` and `<lora:name:0.8>` keep working
+- Removed the misleading "Old webui version or unrecognized model shape" warning printed on every load of a model without embedding support (Anima, Chroma, Qwen, Lumina, Wan…); embeddings are listed from the folder silently, and the SDXL refiner's embeddings and `.safetensors` files are now found
 
 ---
 
