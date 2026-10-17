@@ -8,6 +8,7 @@
 
 [![Forge Neo](https://img.shields.io/badge/Forge-Neo-blue)](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
 [![Gradio](https://img.shields.io/badge/Gradio-4.39.0+-orange)](https://gradio.app/)
+[![Version](https://img.shields.io/badge/Version-0.1.0-brightgreen)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/eduardoabreu81/sd-webui-prompt-studio-neo?style=flat-square)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/stargazers)
 [![Wiki](https://img.shields.io/badge/📖-Wiki-blueviolet)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki)
@@ -45,7 +46,7 @@
 
 ## 🆕 What's New
 
-### v0.1
+### v0.1.0
 
 > First release of the unified extension — the two modules share one settings section, one metadata backend, and one extra-network catalog. Full pre-merge histories (now legacy), archived on the Wiki: [Prompt All-in-One module](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Legacy-Prompt-All-in-One) · [Tag Autocomplete module](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Legacy-TagComplete).
 
@@ -57,12 +58,14 @@
 - **Gelbooru tag list** — 235k tags with aliases, the spelling Anima's model card asks for; see [Tag Lists](#-tag-lists)
 - **📌 Pin tags** — per-checkpoint custom Quality Preset overrides
 - **Anima** added as a built-in Quality Presets template, with an Insert scaffold for its structured prompt format
+- **LoRA activation text removed correctly** - turning a LoRA card off in Forge's Extra Networks clears the text it added instead of leaving it in the prompt, because the editor no longer reformats text it only imports
+- **Wildcard files show their contents** - after choosing a wildcard file in autocomplete, the popup lists the lines inside it instead of the file list
 
 ---
 
 ## 📖 Changelog
 
-### v0.1
+### v0.1.0
 
 - Merged `sd-webui-prompt-all-in-one-neo` (v0.3.3) and `sd-webui-tagcomplete-neo` (v0.2.1) into one repository, preserving both git histories
 - Unified `install.py`, combined MIT license notices, single `Settings → Prompt Studio Neo` section (option keys unchanged — saved values survive the migration)
@@ -89,12 +92,14 @@
 - Reduced checkpoint polling to a lightweight path check; metadata is resolved only when the selected model changes
 - Fixed text after a colon being parsed as a tag weight; typing `subject: 1girl` no longer becomes `subject:1.0girl`. A weight is now only recognized when the number ends the tag, ignoring trailing brackets, so `(masterpiece:1.2)`, `[bad hands:0.8]` and `<lora:name:0.8>` keep working
 - Removed the misleading "Old webui version or unrecognized model shape" warning printed on every load of a model without embedding support (Anima, Chroma, Qwen, Lumina, Wan…); embeddings are listed from the folder silently, and the SDXL refiner's embeddings and `.safetensors` files are now found
+- Fixed the editor rewriting imported prompt text during prompt sync, which left a LoRA's activation text behind when its card was toggled off in Forge's Extra Networks; tag edits and blacklist filtering still write back to the prompt
+- Fixed the autocomplete popup listing the wildcard files again after choosing one instead of the lines inside it: inputs triggered by the extension's own inserted text now run autocomplete immediately, while typing stays debounced
 
 ---
 
 ## 🗺️ Roadmap
 
-### v0.1 *(in progress, not yet released)*
+### v0.1.0 *(released)*
 - Single extension with both engines ✅
 - Unified settings section ✅
 - Anima quality template + filename detection ✅
