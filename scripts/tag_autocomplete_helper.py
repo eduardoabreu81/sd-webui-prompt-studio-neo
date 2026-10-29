@@ -35,6 +35,7 @@ try:
         trigger_words_text,
     )
     from scripts.shared_paths import *
+    from scripts.lora_arch import CLASSIFIER_VERSION, classify, read_safetensors_header, user_label
 except ModuleNotFoundError:
     # Forge Neo can expose extension scripts as sibling modules instead of a
     # conventional package, depending on extension load order.
@@ -56,6 +57,7 @@ except ModuleNotFoundError:
         trigger_words_text,
     )
     from shared_paths import *
+    from lora_arch import CLASSIFIER_VERSION, classify, read_safetensors_header, user_label
 
 try:
     try:
@@ -116,6 +118,8 @@ except Exception as e: # Not supported.
 # Sorting functions for extra networks / embeddings stuff
 sort_criteria = {
     "Name": lambda path, name, subpath: name.lower() if subpath else path.stem.lower(),
+    # File name only, so models in different folders interleave alphabetically
+    "Name (ignore folders)": lambda path, name, subpath: path.stem.lower(),
     "Date Modified (newest first)": lambda path, name, subpath: path.stat().st_mtime if path.exists() else name.lower(),
     "Date Modified (oldest first)": lambda path, name, subpath: path.stat().st_mtime if path.exists() else name.lower()
 }
@@ -450,83 +454,162 @@ def _resolve_network_entry(model_type: str, identifier: str) -> ModelCatalogEntr
     return model_file_catalog.find(model_type, identifier)
 
 
-def is_visible(p: Path) -> bool:
-    if getattr(shared.opts, "extra_networks_hidden_models", "When searched") != "Never":
-        return True
-    for part in p.parts:
-        if part.startswith('.'):
-            return False
-    return True
+LORA_ARCH_CACHE = "lora_arch_cache.json"
 
-def get_lora():
-    """Write a list of all lora.
 
-    Output format (CSV rows): "rel/path/name.ext","sort_key",hash,"alias"
-    The alias column is what the frontend inserts into <lora:ALIAS:weight>.
-    It mirrors the behaviour of Forge Neo's get_alias(): prefers ss_output_name
-    unless the user has chosen "Filename" in the Extra Networks settings.
+def _load_lora_arch_cache() -> dict:
+    try:
+        with open(TEMP_PATH.joinpath(LORA_ARCH_CACHE), "r", encoding="utf-8") as f:
+            cache = json.load(f)
+        return cache if isinstance(cache, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_lora_arch_cache(cache: dict):
+    try:
+        with open(TEMP_PATH.joinpath(LORA_ARCH_CACHE), "w", encoding="utf-8") as f:
+            json.dump(cache, f)
+    except Exception as e:
+        print(f"[Tag Autocomplete Neo] Warning: could not write {LORA_ARCH_CACHE}: {e}")
+
+
+def _safetensors_info(path: Path, cache: dict, seen: dict):
+    """Return (ss_output_name or None, architecture labels) for a .safetensors file.
+
+    Both come from one header read (tensor data is never read). Results are
+    cached by size and modification time; the user's "sd version" is not part
+    of the cache, since it lives in a separate file the user can edit.
     """
-    valid_loras = _get_lora()
+    key = path.absolute().as_posix()
+    try:
+        st = path.stat()
+    except OSError:
+        return None, []
+    entry = cache.get(key)
+    if not (isinstance(entry, dict) and entry.get("size") == st.st_size
+            and entry.get("mtime_ns") == st.st_mtime_ns and entry.get("version") == CLASSIFIER_VERSION):
+        try:
+            tensors, metadata = read_safetensors_header(path)
+            output_name = metadata.get("ss_output_name") or None
+            arch = sorted(classify(tensors, metadata))
+        except Exception:
+            output_name, arch = None, []
+        entry = {"size": st.st_size, "mtime_ns": st.st_mtime_ns, "version": CLASSIFIER_VERSION,
+                 "output_name": output_name, "arch": arch}
+    seen[key] = entry
+    return entry["output_name"], entry["arch"]
+
+
+def _user_sd_version(path: Path):
+    """The "sd version" saved by Forge's Extra Networks metadata editor, if any."""
+    json_path = path.with_suffix(".json")
+    if not json_path.is_file():
+        return None
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("sd version") if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _show_hidden_models() -> bool:
+    """True when LoRA/LyCORIS files under hidden folders (names starting with
+    '.') should be listed. Follows Forge Neo's own 'List the models/files under
+    hidden directories' option, since Forge cannot load them when it is off."""
+    return bool(getattr(shared.opts, "list_hidden_files", True))
+
+
+def is_visible(p: Path, base_path: Path | None) -> bool:
+    """Only folders inside the model root count as hidden, so a dot-folder
+    above it (for example '.models/Lora') does not hide every model."""
+    if _show_hidden_models():
+        return True
+    try:
+        parts = p.relative_to(base_path).parts
+    except (TypeError, ValueError):
+        # Additional --lora-dirs outside the primary root: judge the file only.
+        parts = (p.name,)
+    return not any(part.startswith('.') for part in parts)
+
+
+def _model_rows(entries, base_path: Path | None):
+    """Build CSV rows: "rel/path/name.ext","sort_key",hash,"alias","arch"
+
+    The alias column is what the frontend inserts into <lora:ALIAS:weight>.
+    It mirrors Forge Neo's NetworkOnDisk.get_alias() through
+    preferred_network_name(): ss_output_name unless the user has chosen
+    "Filename", or the alias is ambiguous. Training tools write the same
+    ss_output_name into every epoch/step checkpoint (lora1-000001000,
+    lora1-000002000, ...), so an alias shared by more than one file falls back
+    to the filename stem, as Forge's forbidden_network_aliases does.
+
+    The arch column lists the architectures the file can belong to, joined
+    with "|" (see scripts/lora_arch.py); it is empty when unknown.
+
+    .pt and .ckpt files take part in the alias rule (Forge counts them too)
+    but get no row: they are never suggested, and must be typed by hand.
+    """
     sort_method = getattr(shared.opts, "tac_modelSortOrder", "Name")
     sorter = sort_criteria.get(sort_method, sort_criteria["Name"])
+    forbidden_aliases = _forbidden_lora_aliases()
+    cache = _load_lora_arch_cache()
+    seen = {}
+
+    models = []
+    for entry in entries:
+        m = entry.path
+        if not m.exists() or not m.is_file() or not is_visible(m, base_path):
+            continue
+        if m.suffix.casefold() == ".safetensors":
+            output_name, arch = _safetensors_info(m, cache, seen)
+            user = user_label(_user_sd_version(m))
+            if user:
+                arch = [user]
+        else:
+            output_name, arch = None, []
+        alias = preferred_network_name(
+            m,
+            entry.alias or output_name,
+            forbidden_aliases=forbidden_aliases,
+        )
+        models.append((m, alias, arch))
+
+    if seen != cache:
+        _save_lora_arch_cache(seen)
+
+    owners = {}
+    for i, (m, alias, _) in enumerate(models):
+        for key in {m.stem.casefold(), alias.casefold()}:
+            owners.setdefault(key, set()).add(i)
 
     results = []
-    for entry in valid_loras:
-        l = entry.path
-        provided_alias = entry.alias
-        if not l.exists() or not l.is_file() or not is_visible(l):
+    for m, alias, arch in models:
+        if m.suffix.casefold() != ".safetensors":
             continue
+        if len(owners[alias.casefold()]) > 1:
+            alias = m.stem
         try:
-            name = l.relative_to(LORA_PATH).as_posix()
-        except ValueError:
+            name = m.relative_to(base_path).as_posix()
+        except (TypeError, ValueError):
             # Forge may expose additional --lora-dirs outside the primary root.
-            name = l.name
-        hash_val = get_lora_simple_hash(l) if model_keyword_installed else ""
-
-        alias = preferred_network_name(
-            l,
-            provided_alias,
-            forbidden_aliases=_forbidden_lora_aliases(),
-        )
-
-        sort_key = sorter(l, name, True)
-        results.append(f'"{name}","{sort_key}",{hash_val},"{alias}"')
+            name = m.name
+        hash_val = get_lora_simple_hash(m) if model_keyword_installed else ""
+        sort_key = sorter(m, name, True)
+        results.append(f'"{name}","{sort_key}",{hash_val},"{alias}","{"|".join(arch)}"')
 
     return results
+
+
+def get_lora():
+    """Write a list of all lora. See _model_rows() for the format."""
+    return _model_rows(_get_lora(), LORA_PATH)
 
 
 def get_lyco():
-    """Write a list of all LyCORIS/LOHA.
-
-    Output format (CSV rows): "rel/path/name.ext","sort_key",hash,"alias"
-    Same alias logic as get_lora().
-    """
-    valid_lycos = _get_lyco()
-    sort_method = getattr(shared.opts, "tac_modelSortOrder", "Name")
-    sorter = sort_criteria.get(sort_method, sort_criteria["Name"])
-
-    results = []
-    for entry in valid_lycos:
-        ly = entry.path
-        provided_alias = entry.alias
-        if not ly.exists() or not ly.is_file() or not is_visible(ly):
-            continue
-        try:
-            name = ly.relative_to(LYCO_PATH).as_posix()
-        except ValueError:
-            name = ly.name
-        hash_val = get_lora_simple_hash(ly) if model_keyword_installed else ""
-
-        alias = preferred_network_name(
-            ly,
-            provided_alias,
-            forbidden_aliases=_forbidden_lora_aliases(),
-        )
-
-        sort_key = sorter(ly, name, True)
-        results.append(f'"{name}","{sort_key}",{hash_val},"{alias}"')
-
-    return results
+    """Write a list of all LyCORIS/LOHA. Same format as get_lora()."""
+    return _model_rows(_get_lyco(), LYCO_PATH)
 
 def get_style_names():
     try:
@@ -688,6 +771,7 @@ def on_ui_settings():
         "Logarithmic (weak)": "Will respect the base order and slightly prefer often used tags",
         "Logarithmic (strong)": "Same as Logarithmic (weak), but with a stronger bias",
         "Usage first": "Will list used tags by frequency before all others",
+        "Recent, then frequent": "Lists the last few results you used first (most recent first), then frequently used ones, then the base order",
     }
 
     tac_options = {
@@ -716,15 +800,17 @@ def on_ui_settings():
         "tac_forceRefreshEmbeddings": shared.OptionInfo(False, "Force refresh embeddings when pressing the extra networks refresh button").info("Turn this on if you have issues with new embeddings not registering correctly in TAC. Warning: Seems to cause reloading issues in gradio for some users."),
         "tac_includeEmbeddingsInNormalResults": shared.OptionInfo(False, "Include embeddings in normal tag results").info("The 'JumpTo...' keybinds (End & Home key by default) will select the first non-embedding result of their direction on the first press for quick navigation in longer lists."),
         "tac_useLoras": shared.OptionInfo(True, "Search for Loras"),
+        "tac_loraArchFilter": shared.OptionInfo("Show matching first", "Filter Loras by the architecture of the UI preset", gr.Radio, {"choices": ["Off", "Hide other architectures", "Show matching first"]}).info("The architecture is read from each Lora file. Loras whose architecture cannot be determined are always shown, below the matching ones and marked 'unknown'. .pt and .ckpt Loras are never suggested; type them by hand."),
         "tac_useLycos": shared.OptionInfo(True, "Search for LyCORIS/LoHa"),
         "tac_useLoraPrefixForLycos": shared.OptionInfo(True, "Use the '<lora:' prefix instead of '<lyco:' for models in the LyCORIS folder").info("The lyco prefix is included for backwards compatibility and not used anymore by default. Disable this if you are on an old webui version without built-in lyco support."),
         "tac_showWikiLinks": shared.OptionInfo(False, "Show '?' next to tags, linking to its Danbooru or e621 wiki page").info("Warning: This is an external site and very likely contains NSFW examples!"),
         "tac_showExtraNetworkPreviews": shared.OptionInfo(True, "Show preview thumbnails for extra networks if available"),
-        "tac_modelSortOrder": shared.OptionInfo("Name", "Model sort order", gr.Dropdown, lambda: {"choices": list(sort_criteria.keys())}).info("Order for extra network models and wildcards in dropdown"),
+        "tac_modelSortOrder": shared.OptionInfo("Name", "Model sort order", gr.Dropdown, lambda: {"choices": list(sort_criteria.keys())}).info("Order for extra network models and wildcards in dropdown. 'Name' sorts by the path inside the model folder, so subfolders stay together; 'Name (ignore folders)' sorts by file name alone."),
         "tac_useStyleVars": shared.OptionInfo(False, "Search for webui style names").info("Suggests style names from the webui dropdown with '$'. Currently requires a secondary extension like <a href=\"https://github.com/SirVeggie/extension-style-vars\" target=\"_blank\">style-vars</a> to actually apply the styles before generating."),
         # Frequency sorting settings
         "tac_frequencySort": shared.OptionInfo(True, "Locally record tag usage and sort frequent tags higher").info("Will also work for extra networks, keeping the specified base order"),
         "tac_frequencyFunction": shared.OptionInfo("Logarithmic (weak)", "Function to use for frequency sorting", gr.Dropdown, lambda: {"choices": list(frequency_sort_functions.keys())}).info("; ".join([f'<b>{key}</b>: {val}' for key, val in frequency_sort_functions.items()])),
+        "tac_frequencyRecentCount": shared.OptionInfo(3, "Number of recently used results listed first").info("Only for 'Recent, then frequent'. These skip the minimum number of uses below, so a result moves up after its first use. Set to 0 to disable."),
         "tac_frequencyMinCount": shared.OptionInfo(3, "Minimum number of uses for a tag to be considered frequent").info("Tags with less uses than this will not be sorted higher, even if the sorting function would normally result in a higher position."),
         "tac_frequencyMaxAge": shared.OptionInfo(30, "Maximum days since last use for a tag to be considered frequent").info("Similar to the above, tags that haven't been used in this many days will not be sorted higher. Set to 0 to disable."),
         "tac_frequencyRecommendCap": shared.OptionInfo(10, "Maximum number of recommended tags").info("Limits the maximum number of recommended tags to not drown out normal results. Set to 0 to disable."),
@@ -854,6 +940,25 @@ def on_ui_settings():
     shared.opts.add_option("tac_refreshTempFiles", shared.OptionInfo("Refresh TAC temp files", "Refresh internal temp files", gr.HTML, {}, refresh=refresh_temp_files, section=TAC_SECTION))
 
 script_callbacks.on_ui_settings(on_ui_settings)
+
+def select_use_counts(count_list, cap: int, recent: int):
+    """Pick the use counts to send to the frontend.
+
+    count_list holds (name, type, count, last_used) rows. With cap > 0 only the
+    cap most used rows are kept; with recent > 0 the recent most recently used
+    rows (count > 0) are kept too, whatever their count, for "Recent, then
+    frequent". last_used is SQLite's "YYYY-MM-DD HH:MM:SS", so it sorts as text.
+    """
+    if cap <= 0:
+        return count_list
+    selected = sorted(count_list, key=lambda x: x[2], reverse=True)[:cap]
+    if recent > 0:
+        used = [row for row in count_list if row[2] and row[3]]
+        for row in sorted(used, key=lambda x: x[3], reverse=True)[:recent]:
+            if row not in selected:
+                selected.append(row)
+    return selected
+
 
 def get_style_mtime():
     try:
@@ -1098,13 +1203,12 @@ def api_tac(_: gr.Blocks, app: FastAPI):
             count_list = list(db.get_tag_counts(body.tagNames, body.tagTypes, body.neg, date_limit))
         else:
             count_list = None
-    
-        # If a limit is set, return at max the top n results by count
-        if count_list and len(count_list):
-            limit = int(min(getattr(shared.opts, "tac_frequencyRecommendCap", 10), len(count_list)))
-            # Sort by count and return the top n
-            if limit > 0:
-                count_list = sorted(count_list, key=lambda x: x[2], reverse=True)[:limit]
+
+        if count_list:
+            recent = 0
+            if getattr(shared.opts, "tac_frequencyFunction", "") == "Recent, then frequent":
+                recent = int(getattr(shared.opts, "tac_frequencyRecentCount", 3))
+            count_list = select_use_counts(count_list, int(getattr(shared.opts, "tac_frequencyRecommendCap", 10)), recent)
 
         return db_request(lambda: count_list, get=True)
 
