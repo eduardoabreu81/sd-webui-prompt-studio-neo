@@ -827,7 +827,7 @@ def on_ui_settings():
         "tac_modelKeywordCivitai": shared.OptionInfo(False, "Fetch trigger words from CivitAI when metadata is unavailable").info("Uses the single 'CivitAI API Key' setting above. Results are stored in Prompt Studio's internal cache; model sidecars are never modified."),
         "tac_artistAtTrigger": shared.OptionInfo(False, "Show Artist tags when typing '@'").info("Filters completions to Artist tags from the loaded tag set. The typed '@' is kept on insertion, so you get Anima's '@artist' syntax without needing the option below."),
         "tac_artistInsertAt": shared.OptionInfo(False, "Always add '@' before inserted Artist tags").info("Applies to all Artist tags, independently of the loaded checkpoint."),
-        "tac_animaArtistPrefix": shared.OptionInfo("Off", "Auto-prefix Danbooru Artist tags with '@' for Anima checkpoints", gr.Dropdown, lambda: {"choices": ["Off", "Auto"]}).info("Uses Browser Neo metadata when available, then Prompt Studio's own cache/CivitAI lookup."),
+        "tac_animaArtistPrefix": shared.OptionInfo("Off", "Auto-prefix Danbooru and Gelbooru Artist tags with '@' for Anima checkpoints", gr.Dropdown, lambda: {"choices": ["Off", "Auto"]}).info("Applies while the UI Preset is 'anima'. Without a UI Preset it checks the checkpoint's base model: Browser Neo metadata when available, then Prompt Studio's own cache/CivitAI lookup."),
         "tac_wildcardCompletionMode": shared.OptionInfo("To next folder level", "How to complete nested wildcard paths", gr.Dropdown, lambda: {"choices": ["To next folder level","To first difference","Always fully"]}).info("e.g. \"hair/colours/light/...\""),
         # Alias settings
         "tac_alias.searchByAlias": shared.OptionInfo(True, "Search by alias"),

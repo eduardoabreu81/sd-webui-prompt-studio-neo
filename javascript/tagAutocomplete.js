@@ -377,7 +377,9 @@ async function syncOptions() {
     }
 
     // Apply changes
+    const animaPrefixChanged = TAC_CFG?.animaArtistPrefix !== newCFG.animaArtistPrefix;
     TAC_CFG = newCFG;
+    if (animaPrefixChanged) updateAnimaCheckpointStatus();
 
     // Callback
     await processQueue(QUEUE_AFTER_CONFIG_CHANGE, null);
@@ -537,8 +539,8 @@ async function insertTextAtCursor(textArea, result, tagword, tabCompletedWithout
     // settings below, which cover artists completed without a typed '@'.
     const typedArtistAt = tagword.startsWith("@");
     const shouldPrefixArtist = typedArtistAt || TAC_CFG.artistInsertAt || (
-        currentModelIsAnima && TAC_CFG.animaArtistPrefix !== "Off"
-        && TAC_CFG.tagFile && TAC_CFG.tagFile.toLowerCase().startsWith("danbooru")
+        TAC_CFG.animaArtistPrefix !== "Off" && checkpointIsAnima()
+        && /^(danbooru|gelbooru)/i.test(TAC_CFG.tagFile || "")
     );
     if (shouldPrefixArtist && tagType === ResultType.tag
         && parseInt(result.category) === 1 && !sanitizedText.startsWith("@")) {

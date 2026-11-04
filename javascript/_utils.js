@@ -372,8 +372,22 @@ function updateModelName() {
     }
 }
 
+// Forge Neo's UI preset in lowercase, or null if the page has no preset dropdown.
+function currentUiPreset() {
+    return gradioApp().querySelector("#forge_ui_preset input")?.value?.trim().toLowerCase() || null;
+}
+
+// Whether artist tags should get Anima's '@' prefix. The UI preset decides when it exists:
+// Forge Neo only sends #sd_checkpoint_hash to the browser on page load or a settings change,
+// so after switching checkpoints the status below may not have been refreshed.
+function checkpointIsAnima() {
+    const preset = currentUiPreset();
+    return preset ? preset === "anima" : currentModelIsAnima;
+}
+
+// Fallback for pages without a UI preset: ask the backend for the checkpoint's base model.
 async function updateAnimaCheckpointStatus() {
-    if (!TAC_CFG || TAC_CFG.animaArtistPrefix === "Off") {
+    if (!TAC_CFG || TAC_CFG.animaArtistPrefix === "Off" || currentUiPreset()) {
         currentModelIsAnima = false;
         return;
     }
