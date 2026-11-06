@@ -6,6 +6,7 @@ import copy
 
 from modules import ui_extra_networks
 from scripts.model_metadata_service import read_model_display_info
+from scripts.physton_prompt.get_thumbnail import get_thumbnail_url
 
 filters = [
     # 'filename',
@@ -50,6 +51,8 @@ def get_extra_networks():
                             item['civitai_info'] = info
                 except Exception:
                     pass
+
+                item['thumbnail'] = get_thumbnail_url(item.get('preview'))
 
                 # 过滤掉不需要的字段
                 newItem = {}
