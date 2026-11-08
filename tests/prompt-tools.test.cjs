@@ -133,3 +133,64 @@ test('with Prompt Studio formatting published, the formatter matches its layout'
         assert.equal(area.value, expected)
     }
 })
+
+// Multi-word completion ("long hai" -> long_hair)
+const utils = readFileSync(resolve(root, 'javascript/_utils.js'), 'utf8')
+const slice = (from, to) => tac.slice(tac.indexOf(from), tac.indexOf(to, tac.indexOf(from) + 1))
+const hasTagSrc = slice('// True when a tag name contains `word`', 'async function autocomplete(')
+
+test('spacedTagQueries returns the last plain words joined, longest first', () => {
+    assert.deepEqual([...T.spacedTagQueries('1girl, very long hai')], ['very_long_hai', 'long_hai'])
+    assert.deepEqual([...T.spacedTagQueries('a girl standing in the ra')], ['in_the_ra', 'the_ra'])
+    assert.deepEqual([...T.spacedTagQueries('smile, Long Hai')], ['long_hai'])
+    assert.deepEqual([...T.spacedTagQueries('smile, hai')], [])
+    assert.deepEqual([...T.spacedTagQueries('long hai ')], [])
+    assert.deepEqual([...T.spacedTagQueries('long  hai')], [])
+    assert.deepEqual([...T.spacedTagQueries('(long hai')], [])
+    assert.deepEqual([...T.spacedTagQueries('<lora:my lo')], [])
+    assert.deepEqual([...T.spacedTagQueries('__my wild')], [])
+    assert.deepEqual([...T.spacedTagQueries('a|long hai')], ['long_hai'])
+})
+
+const insertFn = tac.slice(tac.indexOf('async function insertTextAtCursor'), tac.indexOf('function addResultsToList('))
+const constants = ['POINTY_REGEX', 'COMPLETED_WILDCARD_REGEX', 'STYLE_VAR_REGEX', 'NORMAL_TAG_REGEX', 'WEIGHT_REGEX']
+    .map(name => tac.match(new RegExp(`const ${name} = .*;`))[0]).join('\n')
+const tagRegexFn = tac.slice(tac.indexOf('let cachedTagRegex'), tac.indexOf('function setPromptText'))
+
+async function insert(value, caret, text, word, cfg = {}) {
+    const area = {value, selectionStart: caret, selectionEnd: caret, setSelectionRange() {}}
+    const ctx = {
+        TAC_CFG: {appendComma: true, appendSpace: true, alwaysSpaceAtEnd: true, replaceUnderscores: true,
+            escapeParentheses: true, animaArtistPrefix: 'Off', modelKeywordCompletion: 'Never', wcWrap: '__', ...cfg},
+        ResultType: {tag: 1, extra: 2, lora: 3, lyco: 4, wildcardFile: 5, yamlWildcard: 6, umiWildcard: 7, wildcardTag: 8, chant: 9},
+        QUEUE_SANITIZE: [], QUEUE_AFTER_INSERT: [], previousTags: [], tagword: '', tacSelfTrigger: false, hideBlocked: false,
+        updateInput() {}, hideResults() {}, isVisible: () => false, checkpointIsAnima: () => false,
+        requestAnimationFrame: fn => fn(), setTimeout: fn => fn(),
+        getTextAreaIdentifier: () => '.txt2img.p', gradioApp: () => ({querySelector: () => null}),
+    }
+    vm.runInNewContext(utils + '\n' + constants + '\n' + tagRegexFn + '\n' + insertFn
+        + '\nthis.run = (a, r, w) => insertTextAtCursor(a, r, w)', ctx)
+    await ctx.run(area, {text, type: 1}, word)
+    return area.value
+}
+
+test('a tag found from spaced words replaces all of them', async () => {
+    assert.equal(await insert('1girl, long hai', 15, 'long_hair', 'long_hai'), '1girl, long hair, ')
+    assert.equal(await insert('long hai, smile', 8, 'long_hair', 'long_hai'), 'long hair, smile')
+    assert.equal(await insert('1girl, very long hai', 20, 'very_long_hair', 'very_long_hai'), '1girl, very long hair, ')
+    assert.equal(await insert('1girl, long_hai', 15, 'long_hair', 'long_hai'), '1girl, long hair, ')
+    assert.equal(await insert('1girl, rai', 10, 'rain', 'rai'), '1girl, rain, ')
+})
+
+test('hasTagMatch finds multi-word tags through the prefix index and without it', () => {
+    const allTags = [['long_hair'], ['very_long_hair'], ['rain']]
+    allTags.forEach(t => t._lower = t[0])
+    const tagIndex = new Map([['lon', [allTags[0], allTags[1]]], ['hai', [allTags[0], allTags[1]]], ['ver', [allTags[1]]], ['rai', [allTags[2]]]])
+    for (const useIndexedSearch of [true, false]) {
+        const ctx = {allTags, tagIndex, TAC_CFG: {useIndexedSearch}}
+        vm.runInNewContext(utils + '\n' + hasTagSrc, ctx)
+        assert.equal(ctx.hasTagMatch('long_hai'), true)
+        assert.equal(ctx.hasTagMatch('the_ra'), false)
+        assert.equal(ctx.hasTagMatch('ng_hai'), false)
+    }
+})
