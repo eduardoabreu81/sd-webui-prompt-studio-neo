@@ -427,6 +427,7 @@ export default {
         },
         autoRemoveSpace: {
             handler: function (val, oldVal) {
+                this.publishPromptFormat()
                 if (!this.startWatchSave) return
                 console.log('onAutoRemoveSpaceChange', val)
                 this.gradioAPI.setData('autoRemoveSpace', val).then(data => {
@@ -440,6 +441,7 @@ export default {
         },
         autoRemoveLastComma: {
             handler: function (val, oldVal) {
+                this.publishPromptFormat()
                 if (!this.startWatchSave) return
                 console.log('onAutoRemoveLastCommaChange', val)
                 this.gradioAPI.setData('autoRemoveLastComma', val).then(data => {
@@ -644,6 +646,7 @@ export default {
         },
     },
     mounted() {
+        this.publishPromptFormat()
         common.loadCSS('toastr.min.css', 'physton-prompt-toastr', true, true, false)
         common.loadCSS('tippy.css', 'physton-prompt-tippy', true, true, false)
         common.loadCSS('vue3-colorpicker.css', 'physton-prompt-vue3-colorpicker', true, true, false)
@@ -702,6 +705,14 @@ export default {
         })
     },
     methods: {
+        // The TagComplete prompt formatter (javascript/tagAutocomplete.js) reads these so both
+        // formatters join tags the same way and don't undo each other's spacing.
+        publishPromptFormat() {
+            window.phystonPromptFormat = {
+                removeSpace: !!this.autoRemoveSpace,
+                removeLastComma: !!this.autoRemoveLastComma,
+            }
+        },
         getLang(key) {
             return common.getLang(key, this.languageCode, this.languages)
         },

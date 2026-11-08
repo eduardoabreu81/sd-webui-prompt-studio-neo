@@ -828,6 +828,11 @@ def on_ui_settings():
         "tac_artistAtTrigger": shared.OptionInfo(False, "Show Artist tags when typing '@'").info("Filters completions to Artist tags from the loaded tag set. The typed '@' is kept on insertion, so you get Anima's '@artist' syntax without needing the option below."),
         "tac_artistInsertAt": shared.OptionInfo(False, "Always add '@' before inserted Artist tags").info("Applies to all Artist tags, independently of the loaded checkpoint."),
         "tac_animaArtistPrefix": shared.OptionInfo("Off", "Auto-prefix Danbooru and Gelbooru Artist tags with '@' for Anima checkpoints", gr.Dropdown, lambda: {"choices": ["Off", "Auto"]}).info("Applies while the UI Preset is 'anima'. Without a UI Preset it checks the checkpoint's base model: Browser Neo metadata when available, then Prompt Studio's own cache/CivitAI lookup."),
+        # Prompt helper settings
+        "tac_dimUsedTags": shared.OptionInfo(True, "Dim results the prompt already contains").info("shown next to the 🔁 marker"),
+        "tac_selectUsedTag": shared.OptionInfo(True, "Choosing a tag the prompt already contains selects it instead of adding a duplicate").info("the partly typed word is removed"),
+        "tac_formatMode": shared.OptionInfo("Manual (Alt+Shift+F)", "Prompt formatter", gr.Radio, lambda: {"choices": ["Off", "Manual (Alt+Shift+F)", "Automatic (on blur)"]}).info("tidies commas and spaces between tags; Alt+Shift+F works in both modes. The separator follows 'Append space'"),
+        "tac_formatTrailingComma": shared.OptionInfo(False, "Prompt formatter ends each line with a comma"),
         "tac_wildcardCompletionMode": shared.OptionInfo("To next folder level", "How to complete nested wildcard paths", gr.Dropdown, lambda: {"choices": ["To next folder level","To first difference","Always fully"]}).info("e.g. \"hair/colours/light/...\""),
         # Alias settings
         "tac_alias.searchByAlias": shared.OptionInfo(True, "Search by alias"),
