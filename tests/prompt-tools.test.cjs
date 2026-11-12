@@ -182,10 +182,18 @@ test('a tag found from spaced words replaces all of them', async () => {
     assert.equal(await insert('1girl, rai', 10, 'rain', 'rai'), '1girl, rain, ')
 })
 
-test('hasTagMatch finds multi-word tags through the prefix index and without it', () => {
-    const allTags = [['long_hair'], ['very_long_hair'], ['rain']]
-    allTags.forEach(t => t._lower = t[0])
-    const tagIndex = new Map([['lon', [allTags[0], allTags[1]]], ['hai', [allTags[0], allTags[1]]], ['ver', [allTags[1]]], ['rai', [allTags[2]]]])
+const indexSrc = slice('// Adds the index keys of `text`', 'async function loadTags(')
+
+async function indexed(names, translations = new Map()) {
+    const allTags = names.map(n => Array.isArray(n) ? [...n] : [n])
+    const ctx = {allTags, tagIndex: new Map(), translations, setTimeout}
+    vm.runInNewContext(indexSrc + '\nthis.build = buildTagIndex', ctx)
+    await ctx.build()
+    return ctx
+}
+
+test('hasTagMatch finds multi-word tags through the prefix index and without it', async () => {
+    const {allTags, tagIndex} = await indexed(['long_hair', 'very_long_hair', 'rain'])
     for (const useIndexedSearch of [true, false]) {
         const ctx = {allTags, tagIndex, TAC_CFG: {useIndexedSearch}}
         vm.runInNewContext(utils + '\n' + hasTagSrc, ctx)
@@ -193,4 +201,21 @@ test('hasTagMatch finds multi-word tags through the prefix index and without it'
         assert.equal(ctx.hasTagMatch('the_ra'), false)
         assert.equal(ctx.hasTagMatch('ng_hai'), false)
     }
+})
+
+test('the prefix index finds every tag the full scan finds, after symbols too', async () => {
+    const names = ['@kantoku', '@ask_(askzy)', 'style_(artist)', 'school_uniform', 'kantai_collection', ':3', 'artist_name',
+        ['cat_ears', '', '', 'nekomimi,animal_ears'], ['blue_sky', '', '', ''], 'Tooth', 'k:kantoku']
+    const {allTags, tagIndex} = await indexed(names, new Map([['blue_sky', '青い空']]))
+    const words = ['kan', 'kantoku', '@ka', 'ask', 'askzy', 'art', 'artist', 'uni', 'school_u', 'neko', 'ani', 'too', '青い空', 'ant']
+    for (const word of words) {
+        const re = new RegExp(`(^|[^a-zA-Z])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i')
+        const hit = t => [t._lower, t._aliasLower || ''].some(s => re.test(s)) || (t[0] === 'blue_sky' && re.test('青い空'))
+        // Spread into this realm's arrays, since the index's arrays come from the vm context
+        const full = [...allTags.filter(hit).map(t => t[0])]
+        const fromIndex = [...(tagIndex.get(word.substring(0, 3)) || []).filter(hit).map(t => t[0])]
+        assert.deepEqual(fromIndex, full, word)
+    }
+    assert.ok((tagIndex.get('kan') || []).some(t => t[0] === '@kantoku'))
+    assert.ok((tagIndex.get('ant') || []).every(t => t[0] !== 'kantai_collection'))
 })
