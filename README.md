@@ -378,4 +378,6 @@ Made with ❤️ for the Stable Diffusion community
 
 Original extensions by **[Physton](https://github.com/Physton/sd-webui-prompt-all-in-one)** and **[DominikDoom](https://github.com/DominikDoom/a1111-sd-webui-tagcomplete)** — please ⭐ the original repos if you find this useful.
 
+<sub>More Forge Neo extensions at <a href="https://eduardoabreu81.github.io/">eduardoabreu81.github.io</a></sub>
+
 </div>
