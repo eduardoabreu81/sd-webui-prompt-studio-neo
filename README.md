@@ -8,7 +8,7 @@
 
 [![Forge Neo](https://img.shields.io/badge/Forge-Neo-blue)](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
 [![Gradio](https://img.shields.io/badge/Gradio-4.39.0+-orange)](https://gradio.app/)
-[![Version](https://img.shields.io/badge/Version-0.1.0-brightgreen)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo)
+[![Version](https://img.shields.io/badge/Version-0.1.1-brightgreen)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/eduardoabreu81/sd-webui-prompt-studio-neo?style=flat-square)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/stargazers)
 [![Wiki](https://img.shields.io/badge/📖-Wiki-blueviolet)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki)
@@ -46,6 +46,13 @@
 
 ## 🆕 What's New
 
+### v0.1.1 - Suggestions That Keep Up and Long Tags That Stay in Their Box
+
+- **The suggestion list follows your typing** - a slow search for the first letter no longer replaces the newer list, sticks on its tags or closes the list halfway through a tag; only the latest search can change the list
+- **Works with Forge Neo's "Delay before a prompt edit is sent to Gradio"** - the list updates with every key even with the delay turned up, so you keep smooth typing and an up-to-date list
+- **Long tags stay inside their box after the page loads** - a long tag, such as a paragraph wrapped in weight brackets, restored with the page no longer spills over the panel
+- **Firefox fix option repaired** - its stylesheet is compiled again, and a long tag on one line ends in "…" inside its box
+
 ### v0.1.0
 
 > First release of the unified extension — the two modules share one settings section, one metadata backend, and one extra-network catalog. Full pre-merge histories (now legacy), archived on the Wiki: [Prompt All-in-One module](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Legacy-Prompt-All-in-One) · [Tag Autocomplete module](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Legacy-TagComplete).
@@ -64,6 +71,13 @@
 ---
 
 ## 📖 Changelog
+
+### v0.1.1 - Suggestions That Keep Up and Long Tags That Stay in Their Box
+
+- **The suggestion list follows your typing** - a slow search for the first letter no longer replaces the newer list, sticks on its tags or closes the list halfway through a tag; only the latest search can change the list
+- **Works with Forge Neo's "Delay before a prompt edit is sent to Gradio"** - the list updates with every key even with the delay turned up, so you keep smooth typing and an up-to-date list
+- **Long tags stay inside their box after the page loads** - a long tag, such as a paragraph wrapped in weight brackets, restored with the page no longer spills over the panel
+- **Firefox fix option repaired** - its stylesheet is compiled again, and a long tag on one line ends in "…" inside its box
 
 ### v0.1.0
 
