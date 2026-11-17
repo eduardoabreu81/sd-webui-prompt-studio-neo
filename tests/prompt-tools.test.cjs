@@ -141,7 +141,10 @@ const hasTagSrc = slice('// True when a tag name contains `word`', 'async functi
 
 test('spacedTagQueries returns the last plain words joined, longest first', () => {
     assert.deepEqual([...T.spacedTagQueries('1girl, very long hai')], ['very_long_hai', 'long_hai'])
-    assert.deepEqual([...T.spacedTagQueries('a girl standing in the ra')], ['in_the_ra', 'the_ra'])
+    assert.deepEqual([...T.spacedTagQueries('a girl standing in the ra')],
+        ['a_girl_standing_in_the_ra', 'girl_standing_in_the_ra', 'standing_in_the_ra', 'in_the_ra', 'the_ra'])
+    assert.equal(T.spacedTagQueries('1girl, smile, hand on own ch')[0], 'hand_on_own_ch')
+    assert.equal(T.spacedTagQueries('a b c d e f g h').length, 5)
     assert.deepEqual([...T.spacedTagQueries('smile, Long Hai')], ['long_hai'])
     assert.deepEqual([...T.spacedTagQueries('smile, hai')], [])
     assert.deepEqual([...T.spacedTagQueries('long hai ')], [])
@@ -164,6 +167,7 @@ async function insert(value, caret, text, word, cfg = {}) {
             escapeParentheses: true, animaArtistPrefix: 'Off', modelKeywordCompletion: 'Never', wcWrap: '__', ...cfg},
         ResultType: {tag: 1, extra: 2, lora: 3, lyco: 4, wildcardFile: 5, yamlWildcard: 6, umiWildcard: 7, wildcardTag: 8, chant: 9},
         QUEUE_SANITIZE: [], QUEUE_AFTER_INSERT: [], previousTags: [], tagword: '', tacSelfTrigger: false, hideBlocked: false,
+        autocompleteRun: 0,
         updateInput() {}, hideResults() {}, isVisible: () => false, checkpointIsAnima: () => false,
         requestAnimationFrame: fn => fn(), setTimeout: fn => fn(),
         getTextAreaIdentifier: () => '.txt2img.p', gradioApp: () => ({querySelector: () => null}),
@@ -180,6 +184,16 @@ test('a tag found from spaced words replaces all of them', async () => {
     assert.equal(await insert('1girl, very long hai', 20, 'very_long_hair', 'very_long_hai'), '1girl, very long hair, ')
     assert.equal(await insert('1girl, long_hai', 15, 'long_hair', 'long_hai'), '1girl, long hair, ')
     assert.equal(await insert('1girl, rai', 10, 'rain', 'rai'), '1girl, rain, ')
+    assert.equal(await insert('1girl, smile, hand on own ch', 28, 'hand_on_own_cheek', 'hand_on_own_ch'),
+        '1girl, smile, hand on own cheek, ')
+})
+
+test('a click inserts even when the list was drawn for an older word', async () => {
+    // TagComplete Neo #9: match.index on null threw, so the click did nothing
+    assert.equal(await insert('1girl, smile, hand on own ch', 28, 'hand_on_own_cheek', 'on_own_che'),
+        '1girl, smile, hand on own cheek, ')
+    assert.equal(await insert('1girl, smi', 10, 'smile', 'zzz'), '1girl, smile, ')
+    assert.equal(await insert('1girl, ', 7, 'smile', 'zzz'), '1girl, smile, ')
 })
 
 const indexSrc = slice('// Adds the index keys of `text`', 'async function loadTags(')
