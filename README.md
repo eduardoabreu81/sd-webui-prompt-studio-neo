@@ -8,7 +8,7 @@
 
 [![Forge Neo](https://img.shields.io/badge/Forge-Neo-blue)](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
 [![Gradio](https://img.shields.io/badge/Gradio-4.39.0+-orange)](https://gradio.app/)
-[![Version](https://img.shields.io/badge/Version-0.3.1-brightgreen)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo)
+[![Version](https://img.shields.io/badge/Version-0.3.2-brightgreen)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/eduardoabreu81/sd-webui-prompt-studio-neo?style=flat-square)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/stargazers)
 [![Wiki](https://img.shields.io/badge/📖-Wiki-blueviolet)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki)
@@ -46,6 +46,11 @@
 
 ## 🆕 What's New
 
+### v0.3.2 - Clicking a Suggestion While Editing a Tag
+
+- **A click on a suggestion always inserts it** - editing a tag already in the prompt (for example erasing the end of `hand on own chest` to pick another one) could leave a list you could see but not click
+- **Multi-word tags replace every word you typed** - `hand on own ch` now completes to `hand on own cheek`, instead of `hand hand on own cheek`
+
 ### v0.3.1 - Suggestions That Keep Up and Long Tags That Stay in Their Box
 
 - **The suggestion list follows your typing** - a slow search for the first letter no longer replaces the newer list, sticks on its tags or closes the list halfway through a tag; only the latest search can change the list
@@ -66,6 +71,11 @@
 ---
 
 ## 📖 Changelog
+
+### v0.3.2 - Clicking a Suggestion While Editing a Tag
+
+- **A click on a suggestion always inserts it** - editing a tag already in the prompt (for example erasing the end of `hand on own chest` to pick another one) could leave a list you could see but not click
+- **Multi-word tags replace every word you typed** - `hand on own ch` now completes to `hand on own cheek`, instead of `hand hand on own cheek`
 
 ### v0.3.1 - Suggestions That Keep Up and Long Tags That Stay in Their Box
 
