@@ -8,7 +8,7 @@
 
 [![Forge Neo](https://img.shields.io/badge/Forge-Neo-blue)](https://github.com/Haoming02/sd-webui-forge-classic/tree/neo)
 [![Gradio](https://img.shields.io/badge/Gradio-4.39.0+-orange)](https://gradio.app/)
-[![Version](https://img.shields.io/badge/Version-0.1.1-brightgreen)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo)
+[![Version](https://img.shields.io/badge/Version-0.3.1-brightgreen)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/eduardoabreu81/sd-webui-prompt-studio-neo?style=flat-square)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/stargazers)
 [![Wiki](https://img.shields.io/badge/📖-Wiki-blueviolet)](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki)
@@ -46,38 +46,49 @@
 
 ## 🆕 What's New
 
-### v0.1.1 - Suggestions That Keep Up and Long Tags That Stay in Their Box
+### v0.3.1 - Suggestions That Keep Up and Long Tags That Stay in Their Box
 
 - **The suggestion list follows your typing** - a slow search for the first letter no longer replaces the newer list, sticks on its tags or closes the list halfway through a tag; only the latest search can change the list
 - **Works with Forge Neo's "Delay before a prompt edit is sent to Gradio"** - the list updates with every key even with the delay turned up, so you keep smooth typing and an up-to-date list
+- **Clicking a suggestion keeps the prompt focused** - a click held a little longer, or dragging the list's scrollbar, no longer closes the list before the tag is added
+- **Tags that start with a symbol are found** - such as Anima's `@artist` tags
 - **Long tags stay inside their box after the page loads** - a long tag, such as a paragraph wrapped in weight brackets, restored with the page no longer spills over the panel
 - **Firefox fix option repaired** - its stylesheet is compiled again, and a long tag on one line ends in "…" inside its box
 
-### v0.1.0
+### v0.3.0 - Smarter Suggestions and Extra Networks Previews
 
-> First release of the unified extension — the two modules share one settings section, one metadata backend, and one extra-network catalog. Full pre-merge histories (now legacy), archived on the Wiki: [Prompt All-in-One module](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Legacy-Prompt-All-in-One) · [Tag Autocomplete module](https://github.com/eduardoabreu81/sd-webui-prompt-studio-neo/wiki/Legacy-TagComplete).
-
-- **Live Tag Colorizer** — read-only overlay that colorizes prompt text by tag type as you type; see [Live Tag Colorizer](#-live-tag-colorizer-) under Features
-- **Shared model metadata cache** — PAIO and TAC reuse one CivitAI/SHA-256 backend owned by Prompt Studio Neo
-- **Optional Browser Neo integration** — existing `.json`, `.api_info.json`, and checkpoint hash data can be consumed read-only when available
-- **Forge-native extra-network catalog** — LoRA paths, aliases, and cached network hashes come from Forge Neo once per refresh instead of repeated directory scans
-- **Artist autocomplete with `@`** — artist-only suggestions that keep the `@` on insertion, plus optional Anima-aware prefixing for artists typed without it
-- **Gelbooru tag list** — 235k tags with aliases, the spelling Anima's model card asks for; see [Tag Lists](#-tag-lists)
-- **📌 Pin tags** — per-checkpoint custom Quality Preset overrides
-- **Anima** added as a built-in Quality Presets template, with an Insert scaffold for its structured prompt format
-- **LoRA activation text removed correctly** - turning a LoRA card off in Forge's Extra Networks clears the text it added instead of leaving it in the prompt, because the editor no longer reformats text it only imports
-- **Wildcard files show their contents** - after choosing a wildcard file in autocomplete, the popup lists the lines inside it instead of the file list
+- **Tags already in the prompt** are dimmed in the suggestions, and choosing one selects the existing tag instead of adding a duplicate
+- **Prompt formatter** (Off / Manual with Alt+Shift+F / Automatic on blur): trims the prompt and drops empty tags, following the editor's own formatting choices so the two never undo each other
+- **Multi-word tags typed with spaces** - "long hai" suggests `long_hair`, and faster sorting by usage
+- **Extra Networks panel thumbnails** - small cached previews instead of full-size images, and a fallback through the local preview, Civitai and a placeholder so a card never shows a broken image
+- **The LoRA alias Forge inserts** into the prompt is recognised, and typed prompts follow the formatting settings again
 
 ---
 
 ## 📖 Changelog
 
-### v0.1.1 - Suggestions That Keep Up and Long Tags That Stay in Their Box
+### v0.3.1 - Suggestions That Keep Up and Long Tags That Stay in Their Box
 
 - **The suggestion list follows your typing** - a slow search for the first letter no longer replaces the newer list, sticks on its tags or closes the list halfway through a tag; only the latest search can change the list
 - **Works with Forge Neo's "Delay before a prompt edit is sent to Gradio"** - the list updates with every key even with the delay turned up, so you keep smooth typing and an up-to-date list
+- **Clicking a suggestion keeps the prompt focused** - a click held a little longer, or dragging the list's scrollbar, no longer closes the list before the tag is added
+- **Tags that start with a symbol are found** - such as Anima's `@artist` tags
 - **Long tags stay inside their box after the page loads** - a long tag, such as a paragraph wrapped in weight brackets, restored with the page no longer spills over the panel
 - **Firefox fix option repaired** - its stylesheet is compiled again, and a long tag on one line ends in "…" inside its box
+
+### v0.3.0 - Smarter Suggestions and Extra Networks Previews
+
+- **Tags already in the prompt** are dimmed in the suggestions, and choosing one selects the existing tag instead of adding a duplicate
+- **Prompt formatter** (Off / Manual with Alt+Shift+F / Automatic on blur): trims the prompt and drops empty tags, following the editor's own formatting choices so the two never undo each other
+- **Multi-word tags typed with spaces** - "long hai" suggests `long_hair`, and faster sorting by usage
+- **Extra Networks panel thumbnails** - small cached previews instead of full-size images, and a fallback through the local preview, Civitai and a placeholder so a card never shows a broken image
+- **The LoRA alias Forge inserts** into the prompt is recognised, and typed prompts follow the formatting settings again
+
+### v0.2.0 - LoRA Suggestions by Architecture
+
+- **LoRA suggestions follow the UI preset's architecture** - matching LoRAs first (or only them), read from each file's header
+- **"Recent, then frequent"** usage sorting and a **"Name (ignore folders)"** sort order
+- **Anima's `@` artist prefix decided by the UI preset**, Gelbooru tag lists included, and setting changes applied without restarting Forge Neo
 
 ### v0.1.0
 
@@ -113,6 +124,9 @@
 
 ## 🗺️ Roadmap
 
+### v0.2.0 – v0.3.1 *(released)*
+- LoRA suggestions by architecture, tags already in the prompt, prompt formatter, multi-word tags, panel thumbnails and previews ✅
+
 ### v0.1.0 *(released)*
 - Single extension with both engines ✅
 - Unified settings section ✅
@@ -125,12 +139,12 @@
 - Forge-owned extra-networks file catalog feeding both engines ✅
 - Live Tag Colorizer (Stage 1) ✅
 
-### v0.2 — Prompt Profiles & Anima Builder *(planned)*
+### v0.4 — Prompt Profiles & Anima Builder *(planned)*
 - Prompt Profiles: Classic (default) / Anima / Ideogram — grammar and defaults per model, never touching your data
 - Anima Prompt Builder: inline structured panel (quality, character blocks, `@artist`, environment) with tag autocompletion inside the builder fields
 - Builder presets, import/export, auto-suggest when an Anima checkpoint is loaded
 
-### v0.3 — Backend Follow-ups *(planned)*
+### v0.5 — Backend Follow-ups *(planned)*
 - Replace the embedding preview fallback scan when Forge Neo exposes a stable embedding catalog before model load
 - Evaluate wildcard indexing separately, preserving Dynamic Prompts paths and explicit refresh semantics
 
